@@ -570,7 +570,7 @@ Cd45liveRatio = 0
 Cd3liveRatio = 0
 Cd3Cd45Ratio = 0  
 
-#wrkingFilepath = fl#filepath1
+#wrkingFilepath = files[3]fl#filepath1
 #Load file-----------------------
 
   filedata = read.csv(wrkingFilepath,header = T)
@@ -1362,8 +1362,11 @@ Area1DArea2 = c(Area1DArea2,Area1DArea2b)
 
 
 #Find Dead---------------
+#plot(filedatal45pl[,c("Area1","Area6")],100)
 
+#change 170717DD
 lm68 = with(filedatal45pl[filedatal45pl[,"Area6"] > 1,],lm(Area8 ~ Area6 ))
+#lm68 = with(filedatal45pl[filedatal45pl[,"Area6"] > -1,],lm(Area8 ~ Area6 ))
 x2 = lm68$coefficients[2]
 vp = c(1,x2)/sqrt(1 + x2^2 )
 vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
