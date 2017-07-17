@@ -25,6 +25,13 @@ UseValidationMode = TRUE
 WRITE_RESUTLS = FALSE
 LUDA = FALSE
 
+#ACCEPTANCE CRITERIA
+USE_ACCEPTANCE_CRITERIA = FALSE
+bAddmedianInformation = TRUE
+medianDat = NULL
+QCResults = list(ErrorNum = 0,QCarra = NULL, ErrorString = NULL )
+
+
 
 #FUNCTIONS------------------
 
@@ -553,64 +560,191 @@ maxiNu = function(x,y,PLOTS1,plotpath,filename,DEVOFF,minmax ,filter_length  ){
   
 }
 
+#Error Handle function ----------------------------------------------------------
+
+checkType  = c("QCNumberOf45","QC45","QC3","QCDraq7","QC4","QC8")
+RatioMaxlimits = c(1e8,1e8,1e8,1e8,1e8,1e8)
+RatioMinlimits = c(1.0,1.6,1.8,1.5,1.0,4.0)
+sizelimits = c(1000,300,300,300,300,300)
+Ratiolimits =  data.frame(checkType,RatioMinlimits,RatioMaxlimits)
+
+sizeLimits = data.frame(Type = c("NumberOf45","NumOfCD3Live","NumOfCD3LiveNegative","NumCD3Dead","NumCD4","NumCD8"),Value = c(1000,300,300,300,300,300) ,stringsAsFactors = F)
+
 #main function
 runAlgo_shortData <- function(wrkingFilepath){
-
-#ini Param-----------------------
   
-CD45num = 0
-CD45Livenum = 0 
-CD45deadnum = 0
-CD3num = 0 
-CD3Livenum = 0 
-CD3deadnum = 0 
-selcleanCD4_NoDPnum = 0
-selcleanCD8_NoDPnum = 0
-Cd45liveRatio = 0 
-Cd3liveRatio = 0
-Cd3Cd45Ratio = 0  
-
-#wrkingFilepath = files[3]fl#filepath1
-#Load file-----------------------
-
-  filedata = read.csv(wrkingFilepath,header = T)
+#In Function --------------------
+  #QCNumberOf45!
+QCumberOf45f <- function(QCResultin){
   
-  di = dim(filedata)
+  resultsString = NULL
   
-  if( ( di[1] > 1e3 ) & ( di[2] > 28 ) ) {
+  if ( dim(filedatal45pl)[1] <= sizeLimits[sizeLimits$Type == "NumberOf45","Value"] ) {
     
-  runInformation  = getCartrigeNameAdnDevice(wrkingFilepath)
+    #Error low number of CD45
+    QCResultin$ErrorNum = 1
+    QCResultin$ErrorString = paste0("NumberofCD45 = ",dim(filedatal45pl)[1]," < ",sizeLimits[sizeLimits$Type == "NumberOf45","Value"])
+  }
   
-  CarName = paste0("C",runInformation$Cartnum)
+  QCResultin
+}
+
+#QC45!
+QC45f<- function(QCResultin){
   
-  Cartnum = runInformation$Cartnum
+  resultsString = NULL
+  #Not enough data unable to perform  QC
+  if( NumOfCD3Live <= sizeLimits[sizeLimits$Type == "NumOfCD3Live","Value"]  ) {
+    
+    QCResultin$QCarra = c(QCResultin$QCarra,1)
+    
+    # Check color CD45 
+  }else{
+    
+    CD3Area1 = medianDat[medianDat$Type == "CD3","Area1"]
+    CD3Area6 = medianDat[medianDat$Type == "CD3","Area6"]
+    
+    ratio = CD3Area1/CD3Area6
+    
+    if ( ratio < Ratiolimits[Ratiolimits == "QC45","RatioMinlimits"] | ratio > Ratiolimits[Ratiolimits == "QC45","RatioMaxlimits"]  ){
+      
+      #Error color CD45
+      QCResultin$ErrorNum = 2
+      QCResultin$ErrorString = paste0("CD45 = ",round(ratio,2)," < ",Ratiolimits[Ratiolimits == "QC45","RatioMinlimits"] )
+    }
+    
+  }
   
- 
-  plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1207/",Cartnum,"/")
+  QCResultin
   
-  if(PLOTS){  
-    if(!dir.exists(plotpath)){
-      dir.create(plotpath)
+}
+
+#QC3!
+QC3f<- function(QCResultin){
+  
+  #Not enough data unable to perform  QC
+  if( NumOfCD3LiveNegative < sizeLimits[sizeLimits$Type == "NumOfCD3LiveNegative","Value"] |  NumOfCD3Live < sizeLimits[sizeLimits$Type == "NumOfCD3Live","Value"] ) {
+    
+    QCResultin$QCarra = c(QCResultin$QCarra,2)
+    
+    # Check color CD3   
+  }else {
+    CD3Area6 = medianDat[medianDat$Type == "CD3","Area6"]
+    NoCD3Area6 = medianDat[medianDat$Type == "NoCD3","Area6"]
+    ratio = CD3Area6 / NoCD3Area6
+    if ( ratio < Ratiolimits[Ratiolimits == "QC3","RatioMinlimits"] | ratio > Ratiolimits[Ratiolimits == "QC3","RatioMaxlimits"]  ){
+      
+      #Error color CD3  
+      QCResultin$ErrorNum = 3
+      QCResultin$ErrorString = paste0("QC3 ratio = ",round(ratio,2)," < ",Ratiolimits[Ratiolimits == "QC3","RatioMinlimits"] )
     }
   }
   
-#Remove low width
-  widthb = filedata$Width > 4
+  QCResultin
   
-  if(PLOTS) {
-    png(filename= paste0(plotpath,"Width",".png"))
-    hist(filedata$Width,500,xlim = c(0,30),xlab = "Width", main = as.character(CarName))
-    abline(v = 4,col ="red",lwd = 2 )
-    dev.off()
+}
+
+
+#QCDraq7!
+QCDraq7f<- function(QCResultin){
+  
+  #Not enough data unable to perform  QC
+  if( NumCD3Dead <  sizeLimits[sizeLimits$Type == "NumCD3Dead","Value"] | NumOfCD3Live < sizeLimits[sizeLimits$Type == "NumOfCD3Live","Value"] ) {
+    
+    QCResultin$QCarra = c(QCResultin$QCarra,3)
+    
+    # Check color QCDraq7   
+  }else{
+    
+    CD3LiveArea8 = medianDat[medianDat$Type == "CD3Live","Area8"]
+    CD3DeadArea8 = medianDat[medianDat$Type == "CD3Dead","Area8"]
+    ratio = CD3DeadArea8 / CD3LiveArea8
+    if ( ratio < Ratiolimits[Ratiolimits == "QCDraq7","RatioMinlimits"] | ratio > Ratiolimits[Ratiolimits == "QCDraq7","RatioMaxlimits"]  ){
+      
+      #Error color Draq7
+      QCResultin$ErrorNum = 4
+      QCResultin$ErrorString = paste0("QC Draq7 ratio = ",round(ratio,2)," < ",Ratiolimits[Ratiolimits == "QCDraq7","RatioMinlimits"] )
+    }
   }
   
-  filedata = filedata[widthb,]
+  QCResultin
   
-  filedatals =  data.frame(apply(filedata[,ty[1:9]],2,log10))
-  filedatals$FCS <- filedata$Peak9
-  filedatals$sumCh =  apply(filedatals[,1:8],1,sum)
+}
+
+#QC4!
+QC4f<- function(QCResultin){
   
-  #Sumch Detection--------------------------------------------
+  #Not enough data unable to perform  QC
+  if( NumCD4 < sizeLimits[sizeLimits$Type == "NumCD4","Value"] | NumOfCD3LiveNegative < sizeLimits[sizeLimits$Type == "NumOfCD3LiveNegative","Value"] ) {
+    
+    QCResultin$QCarra = c(QCResultin$QCarra,5)
+    
+    # Check color CD4 
+  }else{
+    
+    NoCD3Area3 = medianDat[medianDat$Type == "NoCD3","Area3"]
+    CD4Area3 = medianDat[medianDat$Type == "CD4","Area3"]
+    ratio = CD4Area3 / NoCD3Area3
+    if ( ratio < Ratiolimits[Ratiolimits == "QC4","RatioMinlimits"] | ratio > Ratiolimits[Ratiolimits == "QC4","RatioMaxlimits"]  ){
+      
+      #Error color CD4
+      QCResultin$ErrorNum = 6
+      QCResultin$ErrorString = paste0("QC4 ratio = ",round(ratio,2)," < ",Ratiolimits[Ratiolimits == "QC4","RatioMinlimits"] )
+    }
+  }
+  
+  QCResultin
+  
+}
+
+
+#QC8!
+QC8f<- function(QCResultin){
+  
+  #Not enough data unable to perform  QC
+  if(NumCD8 < sizeLimits[sizeLimits$Type == "NumCD8","Value"] | NumOfCD3LiveNegative < sizeLimits[sizeLimits$Type == "NumOfCD3LiveNegative","Value"] ) {
+    
+    QCResultin$QCarra = c(QCResultin$QCarra,7)
+    
+    # Check color CD8   
+  }else{
+    
+    NoCD3Area4 = medianDat[medianDat$Type == "NoCD3","Area4"]
+    CD8Area4 = medianDat[medianDat$Type == "CD8","Area4"]
+    ratio = CD8Area4 / NoCD3Area4
+    if ( ratio < Ratiolimits[Ratiolimits == "QC8","RatioMinlimits"] | ratio > Ratiolimits[Ratiolimits == "QC8","RatioMaxlimits"]  ){
+      
+      #Error color CD8
+      QCResultin$ErrorNum = 8
+      QCResultin$ErrorString =  paste0( "QC8 ratio = ",round(ratio,2)," < ",Ratiolimits[Ratiolimits == "QC8","RatioMinlimits"] )
+    }
+  }
+  
+  QCResultin
+}
+
+QCDumyf<- function(QCResultin){
+  
+  QCResultin
+  
+}
+
+QcCheck <- function(checktype1,QCResultin){
+  
+  QCResult1 = switch( checktype1,
+                      "QCNumberOf45"=  QCumberOf45f(QCResultin),
+                      "QC45" = QC45f(QCResultin),
+                      "QC3" = QC3f(QCResultin),
+                      "QCDraq7" = QCDraq7f(QCResultin),
+                      "QC4" = QC4f(QCResultin),
+                      "QC8" = QC8f(QCResultin),
+                      QCDumyf(QCResultin)
+  )
+  
+  QCResult1
+}
+
+RemoveLowSumCH <- function(){
   
   SumCH_MinMAX = 10
   sumCh = filedatals$sumCh 
@@ -619,12 +753,22 @@ Cd3Cd45Ratio = 0
   hsumch$mids = fr$x
   hsumch$counts = fr$y
   fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
+  
+  #Try 170717DD 
+  if(FALSE){
+    hsumch = density(sumCh)
+    hsumch$y = 100*hsumch$y/max(hsumch$y)
+    with(hsumch,plot(x,y))
+    fmax_hsumch = maxiNu(hsumch$x,hsumch$y,FALSE,plotpath,"sumCh",FALSE,30,10)
+  }
+  
+  
   if(length(fmax_hsumch$maxl) ==  0 ){
     dev.off()
     fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
   }
-    
-    
+  
+  
   bHighMiddle = FALSE
   
   if(length(fmax_hsumch$maxl) > 0 ){
@@ -658,7 +802,7 @@ Cd3Cd45Ratio = 0
         arr = sumCh[ sumCh < bondaryv]
         bondaryv1  = quantile(arr,0.75)
       }
-        
+      
     }else{
       
       bondaryv = hsumch$mids[SimpleLeftCut(fmax_hsumch$maxl$indx[1],hsumch,5e-2)]
@@ -673,95 +817,95 @@ Cd3Cd45Ratio = 0
     #NO max case
     
   }
-
+  
   #Old Code---------
   if(FALSE)
   {
     
-  
-  #--
-  
-  #delete 210617DD
-  #le = dim(filedatal)[1]
-  #samp  = sample(1:le,min(le,2e4))
-  #with(filedatal[samp,],plot(sumCh,Area7 , pch = 19, cex= 0.2, 
-  #                           xlab = "sumCh",ylab = "Area7"))
-  
-  qi =  quantile(filedatal$sumCh,c(0.1,0.9))
-  x1 = median(filedatal$sumCh[filedatal$sumCh < qi[1]])
-  x2 = median(filedatal$sumCh[filedatal$sumCh > qi[2]])
-  y1 = median(filedatal$Area7[filedatal$sumCh < qi[1]])
-  y2 = median(filedatal$Area7[filedatal$sumCh > qi[2]])
-  x2 = 1/(4*(y2 - y1)/(x2 - x1))
-  x2 = min(10,x2)
-  vp = c(1,x2)/sqrt(1 + x2^2 )
-  vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
-  sumCh = cbind( filedatal$sumCh,filedatal$Area7 ) %*% (vp)
-  
-  #delete--
-  
-  #orignal-- 
-  # qi =  quantile(filedatal$sumCh,c(0.1,0.9))
-  # x1 = median(filedatal$sumCh[filedatal$sumCh < qi[1]])
-  # x2 = median(filedatal$sumCh[filedatal$sumCh > qi[2]])
-  # y1 = median(filedatal$FCS[filedatal$sumCh < qi[1]])
-  # y2 = median(filedatal$FCS[filedatal$sumCh > qi[2]])
-  # x2 = 1/(4*(y2 - y1)/(x2 - x1))
-  # x2 = min(10,x2)
-  # 
-  # #x2 = 10  # 3/20
-  # vp = c(1,x2)/sqrt(1 + x2^2 )
-  # vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
-  # 
-  # sumCh = cbind( filedatal$sumCh,filedatal$FCS ) %*% (vp)
-  #--
-  #plot(filedatal$sumCh,filedatal$FCS,pch = 19, cex = 0.2)
-  
-  #Remove low sumCH events----
-  if(PLOTS){
     
-    hsumch  =  hist(sumCh,200,,plot = F )
-    
-  }else{
-    
-    hsumch  =  hist(sumCh,200,plot = F )
-  }
-  
-  
-  fr = filter1(bf,5,hsumch$mids, hsumch$counts)
-  hsumch$mids = fr$x
-  hsumch$counts = fr$y
-  
-  fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
-  
-  #Ver2.1
-  #min of at  least 15%
-  #sellowPre = fmax_hsumch$maxl$pre < 0.85
-  #fmax_hsumch$maxl  = fmax_hsumch$maxl[sellowPre,]
-  #fmax_hsumch$mins = fmax_hsumch$mins[sellowPre,]
-  #
-  #Change if 210617DD 
-  #if ( length(fmax_hsumch$maxl$x)  %in% c(2,3) ) {
-  if ( length(fmax_hsumch$maxl$x)  > 1 ) {
-
-    #middle12 = hsumch$counts[fmax_hsumch$maxl[1]:fmax_hsumch$maxl[2]]
-    #minind =  which(min(middle12) == middle12 ) + fmax_hsumch$maxl[1] - 1
-    #bondaryv = hsumch$mids[minind[1]]
-    bondaryv = fmax_hsumch$mins$x[2] 
-
-  }else{
-    
-    #Change 210617DD
-    #cutv = fmax_hsumch$maxl$y[1]* 0.05
-    #20.6 from + to -
-    #bondaryv  = hsumch$mids[fmax_hsumch$maxl$indx[1] + min(which(hsumch$counts[fmax_hsumch$maxl$indx[1]:length(hsumch$counts)] < cutv)) - 1]
-    #bondaryv  = hsumch$mids[fmax_hsumch$maxl$indx[1] - min(which(hsumch$counts[fmax_hsumch$maxl$indx[1]:length(hsumch$counts)] < cutv)) - 1]
-    bondaryv = hsumch$mids[SimpleLeftCut(fmax_hsumch$maxl$indx[1],hsumch,5e-2)]
     #--
-
-  }
-  
-  
+    
+    #delete 210617DD
+    #le = dim(filedatal)[1]
+    #samp  = sample(1:le,min(le,2e4))
+    #with(filedatal[samp,],plot(sumCh,Area7 , pch = 19, cex= 0.2, 
+    #                           xlab = "sumCh",ylab = "Area7"))
+    
+    qi =  quantile(filedatal$sumCh,c(0.1,0.9))
+    x1 = median(filedatal$sumCh[filedatal$sumCh < qi[1]])
+    x2 = median(filedatal$sumCh[filedatal$sumCh > qi[2]])
+    y1 = median(filedatal$Area7[filedatal$sumCh < qi[1]])
+    y2 = median(filedatal$Area7[filedatal$sumCh > qi[2]])
+    x2 = 1/(4*(y2 - y1)/(x2 - x1))
+    x2 = min(10,x2)
+    vp = c(1,x2)/sqrt(1 + x2^2 )
+    vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
+    sumCh = cbind( filedatal$sumCh,filedatal$Area7 ) %*% (vp)
+    
+    #delete--
+    
+    #orignal-- 
+    # qi =  quantile(filedatal$sumCh,c(0.1,0.9))
+    # x1 = median(filedatal$sumCh[filedatal$sumCh < qi[1]])
+    # x2 = median(filedatal$sumCh[filedatal$sumCh > qi[2]])
+    # y1 = median(filedatal$FCS[filedatal$sumCh < qi[1]])
+    # y2 = median(filedatal$FCS[filedatal$sumCh > qi[2]])
+    # x2 = 1/(4*(y2 - y1)/(x2 - x1))
+    # x2 = min(10,x2)
+    # 
+    # #x2 = 10  # 3/20
+    # vp = c(1,x2)/sqrt(1 + x2^2 )
+    # vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
+    # 
+    # sumCh = cbind( filedatal$sumCh,filedatal$FCS ) %*% (vp)
+    #--
+    #plot(filedatal$sumCh,filedatal$FCS,pch = 19, cex = 0.2)
+    
+    #Remove low sumCH events----
+    if(PLOTS){
+      
+      hsumch  =  hist(sumCh,200,,plot = F )
+      
+    }else{
+      
+      hsumch  =  hist(sumCh,200,plot = F )
+    }
+    
+    
+    fr = filter1(bf,5,hsumch$mids, hsumch$counts)
+    hsumch$mids = fr$x
+    hsumch$counts = fr$y
+    
+    fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
+    
+    #Ver2.1
+    #min of at  least 15%
+    #sellowPre = fmax_hsumch$maxl$pre < 0.85
+    #fmax_hsumch$maxl  = fmax_hsumch$maxl[sellowPre,]
+    #fmax_hsumch$mins = fmax_hsumch$mins[sellowPre,]
+    #
+    #Change if 210617DD 
+    #if ( length(fmax_hsumch$maxl$x)  %in% c(2,3) ) {
+    if ( length(fmax_hsumch$maxl$x)  > 1 ) {
+      
+      #middle12 = hsumch$counts[fmax_hsumch$maxl[1]:fmax_hsumch$maxl[2]]
+      #minind =  which(min(middle12) == middle12 ) + fmax_hsumch$maxl[1] - 1
+      #bondaryv = hsumch$mids[minind[1]]
+      bondaryv = fmax_hsumch$mins$x[2] 
+      
+    }else{
+      
+      #Change 210617DD
+      #cutv = fmax_hsumch$maxl$y[1]* 0.05
+      #20.6 from + to -
+      #bondaryv  = hsumch$mids[fmax_hsumch$maxl$indx[1] + min(which(hsumch$counts[fmax_hsumch$maxl$indx[1]:length(hsumch$counts)] < cutv)) - 1]
+      #bondaryv  = hsumch$mids[fmax_hsumch$maxl$indx[1] - min(which(hsumch$counts[fmax_hsumch$maxl$indx[1]:length(hsumch$counts)] < cutv)) - 1]
+      bondaryv = hsumch$mids[SimpleLeftCut(fmax_hsumch$maxl$indx[1],hsumch,5e-2)]
+      #--
+      
+    }
+    
+    
   }
   #--------------------
   
@@ -771,13 +915,8 @@ Cd3Cd45Ratio = 0
     dev.off()
   }
   
-  sel_sumCh = sumCh > bondaryv1
-  filedatal = filedatals[sel_sumCh,]
-  
-  if(sum(sel_sumCh ) < 1e3 ){
-    
-    return(errorH(UseValidationMode,paste0("sel_sumCh =", sum(sel_sumCh )),plotpath))
-  }
+  out = sumCh > bondaryv1
+  #filedatal = filedatals[sel_sumCh,]
   
   if(PLOTS) {
     
@@ -786,21 +925,24 @@ Cd3Cd45Ratio = 0
     samp  = sample(1:le,min(le,2e4))
     with(filedatals[samp,],plot(sumCh,Area7 , pch = 19, cex= 0.2, 
                                 xlab = "sum FL",ylab = "Area7",
-                                col = colbr[1+ sel_sumCh[samp]],
+                                col = colbr[1+ out[samp]],
                                 ylim = c(0,5),
                                 main = paste0("SumCh_Area7 boundary bondaryv1 ", CarName)))
     dev.off()
   }
   
-  #Orignal Algorithm 100717DD---------------------
+  out 
   
-    
+}
+
+Sel45f <- function(){
+  
   qi =  quantile(filedatal$Area1,c(0.05,0.95))
-  x1 = median( filedatal$Area1[filedatal$Area1 < qi[1]] )
-  x2 = median( filedatal$Area1[filedatal$Area1 > qi[2]] )
-  y1 = median( filedatal$FCS[filedatal$Area1 < qi[1]] )
-  y2 = median( filedatal$FCS[filedatal$Area1 > qi[2]] )
-  x2 = 1/(4*(y2 - y1)/(x2 - x1))
+  px1 = median( filedatal$Area1[filedatal$Area1 < qi[1]] )
+  px2 = median( filedatal$Area1[filedatal$Area1 > qi[2]] )
+  py1 = median( filedatal$FCS[filedatal$Area1 < qi[1]] )
+  py2 = median( filedatal$FCS[filedatal$Area1 > qi[2]] )
+  x2 = 1/(4*(py2 - py1)/(px2 - px1))
   x2 = min(10,x2)
   vp = c(1,x2)/sqrt(1 + x2^2 )
   vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
@@ -837,7 +979,7 @@ Cd3Cd45Ratio = 0
                                col = colbr[cl$cluster[samp]],
                                #ylim = c(0,5) ,
                                main = paste0("Area1_FCS ", CarName)))
-    points(c(x1,x2),c(y1,y2),pch  = 19,cex = 2,col = 5) 
+    points(c(px1,px2),c(py1,py2),pch  = 19,cex = 2,col = 5) 
     dev.off()
   }
   
@@ -846,16 +988,19 @@ Cd3Cd45Ratio = 0
   m2 = mean(filedatal$Area1[cl$cluster == 2])
   if(m1 > m2){
     
-    sel45 = cl$cluster == 1
-  
+    out = cl$cluster == 1
+    
   }else{
     
-    sel45 = cl$cluster == 2
+    out = cl$cluster == 2
   }
   
-  filedatal_sel45 = filedatal[sel45,]
+  out
   
- 
+}
+
+Sel6f<- function(){
+  
   h_Area6_sel45  = hist(filedatal_sel45$Area6,200,plot = F )
   fr = filter1(bf,5,h_Area6_sel45$mids, h_Area6_sel45$counts)
   h_Area6_sel45$mids = fr$x
@@ -880,13 +1025,13 @@ Cd3Cd45Ratio = 0
   }
   
   
-  sel6 = filedatal$Area6  > bounadry_h_Area1_fcs
+  out = filedatal$Area6  > bounadry_h_Area1_fcs
   
   
   if(PLOTS) {
     
     png(filename= paste0(plotpath,"cd3 Area6_Area1 ",".png"))
-    sel6_ = sel6[sel45]  
+    sel6_ = out[sel45]  
     le = dim(filedatal_sel45)[1]
     samp  = sample(1:le,min(le,2e4))
     with(filedatal_sel45[samp,],plot(Area6,Area1 , pch = 19, cex= 0.2, 
@@ -895,8 +1040,594 @@ Cd3Cd45Ratio = 0
                                      #ylim = c(0,5) ,
                                      main = paste0("CD3 Area6_Area1 ", CarName)) )
     dev.off()
-  } 
+  }
+  
+  out
+}
 
+SelPreDeadf <- function(){
+  
+  lm68 = with(filedatal45pl[filedatal45pl[,"Area6"] > 1,],lm(Area8 ~ Area6 ))
+  x2 = lm68$coefficients[2]
+  vp = c(1,x2)/sqrt(1 + x2^2 )
+  vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
+  
+  # create parallel for cutting low dots
+  vpArea6Area8 =  cbind( filedatal45pl$Area6,filedatal45pl$Area8 ) %*% (vp)
+  
+  if(PLOTS){
+    h_vpArea6Area8 = hist(vpArea6Area8,100,plot = F)
+  }else{
+    h_vpArea6Area8 = hist(vpArea6Area8,100,plot = F)
+  }
+  
+  fr = filter1(bf,5,h_vpArea6Area8$mids, h_vpArea6Area8$counts)
+  h_vpArea6Area8$mids = fr$x
+  h_vpArea6Area8$counts = fr$y
+  h_vpArea6Area8_max = maxiNu(h_vpArea6Area8$mids,h_vpArea6Area8$counts,PLOTS,plotpath,"h_vpArea6Area8 SelPreDead",FALSE,30,10)
+  
+  le = length(h_vpArea6Area8_max$maxl$indx)
+  
+  if(le >= 2){
+    
+    h_lm68hpmiddsleMin = h_vpArea6Area8_max$mins$x[2] 
+    
+  }else if ( le == 1 ) {
+    
+    hmaxs  = SimpleLeftCut(h_vpArea6Area8_max$maxl$indx[1],h_vpArea6Area8,2e-2)
+    
+    h_lm68hpmiddsleMin =  h_vpArea6Area8$mids[hmaxs]
+    
+  }else{
+    
+    print(paste0( "le = length(h_vpArea6Area8_max$maxl$indx )le =",le ))
+    #Problem
+  }
+  
+  
+  if(PLOTS){
+    abline(v = h_lm68hpmiddsleMin,col  = 3,lwd = 2,lty =2)
+    dev.off()
+  }
+  
+  vpArea6Area8 =  cbind( filedatal$Area6,filedatal$Area8 ) %*% (vp)
+  out  = vpArea6Area8 > h_lm68hpmiddsleMin
+  
+  if(PLOTS){
+    
+    png(filename= paste0(plotpath,"SelPreDead",".png"))#plot11
+    le = dim(filedatal45pl)[1]
+    samp  = sample(1:le,min(le,2e4))
+    
+    with(filedatal[samp,],plot(Area6,Area8 , pch = 19, cex= 0.2, 
+                               xlab = "Area6",ylab = "Area8",
+                               main = paste0("SelPreDead Cut tail ", CarName),
+                               col = colbr[1+out[samp,]]))
+    
+    abline(lm68,col = "blue",lwd = 2)
+    dev.off()
+  }
+  
+  out
+}
+
+SelDeadf <- function(){
+  
+  selpredead = SelPreDeadf()
+  
+  #Cut tail select up Area6 and Are8-------------------------- 
+  filedatal45pl_predead = filedatal[selpredead & sel45,]
+  
+  #FIRST iteration
+  le = dim(filedatal45pl_predead)[1]
+  samp  = sample(1:le,min(le,4e4))
+  Area6 = c(rep(-2,1e4),filedatal45pl_predead[samp,"Area6"])
+  Area8 = c(rep(-2,1e4),filedatal45pl_predead[samp,"Area8"])
+  lm68s = lm(Area8 ~ Area6 )
+  
+  
+  #Detect Dead------------------------------------------------
+  
+  x2 = lm68s$coefficients[2]
+  vp = c(1,x2)/sqrt(1 + x2^2)
+  vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
+  vvs = cbind( filedatal45pl_predead$Area6,filedatal45pl_predead$Area8) %*% vv
+  
+  if(PLOTS){
+    h_lm68hv = hist(vvs,200,plot = F )
+  }else{
+    h_lm68hv = hist(vvs,200,plot = F )
+  }  
+  
+  fr =  filter1(bf,1,h_lm68hv$mids,h_lm68hv$counts)
+  h_lm68hv$mids = fr$x
+  h_lm68hv$counts = fr$y
+  
+  h_lm68hv_max = maxiNu(h_lm68hv$mids,h_lm68hv$counts,PLOTS,plotpath,"h_lm68hv Detect Deads",FALSE,30,10)
+  
+  if( length(h_lm68hv_max$maxl) == 0 ){
+    
+    dev.off()
+    h_lm68hv_max = maxiNu(h_lm68hv$mids,h_lm68hv$counts,PLOTS,plotpath,"h_lm68hv Detect Deads second",FALSE,20,10)
+    
+  }
+  
+  #No max
+  if( length(h_lm68hv_max$maxl) != 0 ){
+    
+    if(length(h_lm68hv_max$maxl$x) == 1){
+      
+      cut0.02ind = max(1,SimpleLeftCut(h_lm68hv_max$maxl$indx,h_lm68hv,2e-1) - 1)
+      
+    }else{
+      
+      cut0.02ind = h_lm68hv_max$mins$indx[length(h_lm68hv_max$mins$indx) - 1]
+    }
+    
+  }else{
+    
+    cut0.02ind = 1
+    
+  }
+  
+  
+  
+  seldeadv = h_lm68hv$mids[cut0.02ind]
+  
+  if(PLOTS){
+    
+    abline(v = seldeadv ,col = 2,lwd = 2,lty = 2)
+    dev.off()
+  }
+  
+  
+  vvs = cbind( filedatal$Area6,filedatal$Area8) %*% vv
+  seldead = vvs < seldeadv
+  
+  vvsAll = cbind( filedatal$Area6,filedatal$Area8) %*% vv
+  out = ( vvsAll < seldeadv ) & selpredead
+  
+  #DeadNum  = sum(seldeadAll & sel45 )
+  
+  if(PLOTS){
+    
+    png(filename= paste0(plotpath,"Dead",".png"))
+    le = dim(filedatal[selpredead,])[1]
+    samp  = sample(1:le,min(le,2e4))
+    filedatalp = filedatal[selpredead,]
+    
+    with( filedatalp[samp,],plot( Area6 , Area8 , pch = 19, cex= 0.2, 
+                                  xlab = "Area6",ylab = "Area8",
+                                  xlim = c( 0,quantile(Area6,0.999,na.rm = T)) , 
+                                  ylim = c( 0.1,max(Area8,na.rm = T) ) ,
+                                  main = paste0("Area8 vs Area6 ", CarName),
+                                  col = colbr[1+(seldead[selpredead])[samp]]))
+    
+    legend("topleft",c("live","Dead"),col = c(1,2),pch=19 )
+    #abline(lm68live,col  = 5, lwd = 2 )
+    dev.off()
+    
+  }
+  
+  out
+}
+
+SelNonTailCD48f <- function(){
+  
+  if(PLOTS){  
+    
+    abline(lm34,col = 3,lwd = 2)
+    dev.off()
+    
+  }
+  
+  x2 = lm34$coefficients[2]
+  vp = c(1,x2)/sqrt(1 + x2^2)
+  vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
+  vps34 = with(filedatalCD3,cbind(Area4,Area3) %*% vp)
+  
+  if(PLOTS){
+    
+    h_vps34  = hist(vps34,200,plot = F)
+  }else{
+    
+    h_vps34  = hist(vps34,200,plot = F)
+  }
+  
+  fr =  filter1(bf,1,h_vps34$mids,h_vps34$counts)
+  h_vps34$mids = fr$x
+  h_vps34$counts = fr$y
+  
+  h_lm68hv_max = maxiNu(h_vps34$mids,h_vps34$counts,PLOTS,plotpath,"h_vps34 Cut Tail",FALSE,30,10)
+  if( length(h_lm68hv_max$maxl) == 0 ){
+    
+    dev.off()
+    h_lm68hv_max = maxiNu(h_vps34$mids,h_vps34$counts,PLOTS,plotpath,"maxNe_h_vps34",FALSE,20,10)
+  }
+  
+  leMax = length(h_lm68hv_max$maxl$x)
+  
+  if(leMax > 0 ){
+    
+    if ( leMax >= 3 ) {
+      
+      cutpointIndex = h_lm68hv_max$mins$indx[2]
+      cutpoint = h_lm68hv_max$mins$x[2]
+      if(PLOTS){
+        
+        text( cutpoint - 0.1,h_lm68hv_max$maxl$y[2],"Tail")
+      }
+      
+      #no tail 
+    }else {
+      
+      # limit the cut by 1
+      cutpoint = h_lm68hv_max$mins$x[1]
+      cutpointIndex = h_lm68hv_max$mins$indx[1]
+      if( PLOTS){
+        
+        text( h_lm68hv_max$maxl$x[1] -0.2 ,h_lm68hv_max$maxl$y[1],"CD4")
+      }
+      
+    }
+    
+    if( PLOTS){
+      abline(v = cutpoint,col = 1,lwd = 2,lty = 2 )
+      dev.off()
+    }
+  }else{
+    
+    cutpoint = min(vps34)
+    if( PLOTS){
+      
+      abline(v = cutpoint,col = 1,lwd = 2,lty = 2 )
+      
+      dev.off()
+    }
+    
+  }  
+  
+  
+  out =  vps34  >  cutpoint
+  out
+  
+}
+
+SelType40r8f <-function(){
+  
+  bUseRatio = FALSE
+  ratio3vd4 = filedatalCD3_sel_tail$Area3 - filedatalCD3_sel_tail$Area4
+  h34 = hist(ratio3vd4,100,plot = F)
+  h_34max = maxiNu(h34$mids,h34$counts,PLOTS,plotpath,"Detect h34 by ratio ch3-ch4",TRUE,50,10)
+  if( length(h_34max$maxl$indx) == 2 ){
+    
+    
+    middelValue = mean(h_34max$mins$x)
+    ratio3vd4 = filedatalCD3$Area3 - filedatalCD3$Area4
+    out = ratio3vd4 < middelValue
+    
+    if(PLOTS){
+      png(filename= paste0(plotpath,"CD3_Selection CD4_CD8 USE Ratio",".png"))
+      with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+!out[samp]],main = paste0(CarName," CD3_Selection CD4_CD8 USE Ratio")))
+      dev.off()  
+    }
+    
+    bUseRatio = TRUE
+  }
+  
+  if(!bUseRatio ) {
+    
+    x2 = lm34$coefficients[2]
+    vp = c(1,x2)/sqrt(1 + x2^2)
+    vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
+    vvs34woTail = with(filedatalCD3_sel_tail,cbind(Area4,Area3) %*% vv)
+    
+    if(PLOTS){
+      #change new max 210617DD
+      #png(filename= paste0(plotpath,"vvs34woTail",".png"))
+      #h_vvs34woTail  = hist(vvs34woTail,100)
+      h_vvs34woTail  = hist(vvs34woTail,150,plot = F)
+      
+    }else{
+      
+      h_vvs34woTail  = hist(vvs34woTail,100,plot = F)
+      
+    } 
+    
+    fr =  filter1(bf,1,h_vvs34woTail$mids,h_vvs34woTail$counts)
+    h_vvs34woTail$mids = fr$x
+    h_vvs34woTail$counts = fr$y
+    
+    h_vvs34woTailvvs_max = maxiNu(h_vvs34woTail$mids,h_vvs34woTail$counts,PLOTS,plotpath,"h_vvs34woTail Detect CD4 CD8",FALSE,10,6)
+    
+    minbtween = 0 #Version4 Continue 
+    #find the minmum between max ( asume 2 )
+    #change new max 250617DD
+    # if( length(h_vvs34woTailvvs_max$maxl$indx) >= 2){
+    #   
+    #   minbtween = h_vvs34woTailvvs_max$mins$x[2]
+    # }
+    
+    lenMax = length(h_vvs34woTailvvs_max$maxl$indx)
+    
+    if( lenMax > 2){
+      
+      bounary4 = h_vvs34woTailvvs_max$mins$x[lenMax]
+      bounary8 = h_vvs34woTailvvs_max$mins$x[2]
+      abline(v = bounary4, col = 4, lwd = 2 ,lty = 2)
+      abline(v = bounary8, col = 4, lwd = 2 ,lty = 2)
+      
+      sel4  = vvs34woTail > bounary4
+      sel8  = vvs34woTail < bounary8
+      
+      me4  = mean(vvs34woTail[sel4])
+      sd4  = sd(vvs34woTail[sel4])
+      me8  = mean(vvs34woTail[sel8])
+      sd8  = sd(vvs34woTail[sel8])
+      
+      sdall = sd8+sd4
+      minbtween = me8 + (me4  - me8)*sd4/sdall   
+    }
+    
+    if( lenMax == 2){
+      
+      minbtween = h_vvs34woTailvvs_max$mins$x[2]
+      
+      sel4  = vvs34woTail > minbtween
+      sel8  = vvs34woTail < minbtween
+      
+    }
+    
+    #in thecase only one is detect
+    if( lenMax == 1){
+      
+      ra = range(vvs34woTail)
+      
+      if(h_vvs34woTailvvs_max$maxl$x > ( ra[1] + 0.6 * ( ra[2] - ra[1]) ) ){
+        
+        minbtween = findbycut(h_vvs34woTailvvs_max$maxl$indx[1],h_vvs34woTail,5e-2,1)
+        minbtween = h_vvs34woTail$mids[minbtween]
+        
+      }else if(h_vvs34woTailvvs_max$maxl$x < ( ra[1] + 0.4 * ( ra[2] - ra[1]) ) ){
+        
+        minbtween = h_vvs34woTail$mids[findbycut(h_vvs34woTailvvs_max$maxl$indx[1],h_vvs34woTail,5e-2,0)] 
+      }
+      else{
+        
+        minbtween = h_vvs34woTailvvs_max$mins$x[2]
+      }
+      
+    }
+    
+    if( lenMax == 0  ) {
+      
+      med3  = median( filedatalCD3_sel_tail$Area3 )
+      med4  = median( filedatalCD3_sel_tail$Area4 )
+      
+      diffmedian = med3 - med4
+      
+      # 4 is bigger than 3
+      if ( diffmedian < 0 ){
+        
+        #All CD8 
+        minbtween =  min(vvs34woTail)
+        
+      }else{
+        
+        #All CD8 
+        minbtween =  max(vvs34woTail)
+        
+      }
+      
+    }
+    
+    if(PLOTS){
+      
+      abline(v = minbtween, col = 3, lwd = 2 ,lty = 2)
+      dev.off()
+      
+    }
+    
+    #Create CD4 CD8 selection 
+    vvs34 = with(filedatalCD3,cbind(Area4,Area3) %*% vv)
+    #create between 4 and 8 selection variable
+    out = vvs34 > minbtween
+    
+    le = dim(filedatalCD3)[1]
+    samp  = sample(1:le,min(le,1e4))
+    
+    if(PLOTS){
+      
+      png(filename= paste0(plotpath,"CD3_Selection CD4_CD8",".png"))
+      with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+!out[samp]],main = paste0(CarName," First Cut for CD4 and CD8")))
+      dev.off()  
+    }
+    
+  }
+  
+  
+  out
+  
+}
+
+sel_doubleNegtovef <- function(){
+  
+  if(!bType8) 
+  {
+    
+    
+    le = dim(filedatalCD3only4)[1]
+    samp  = sample(1:le,min(le,1e4))
+    da1 = rbind(filedatalCD3only4[,c("Area1","Area3")],data.frame(Area1 =rep(1,1e4),Area3 = rep(1,1e4)))
+    lmonly4 = with(da1, lm(Area3 ~ Area1))
+    
+    
+    x2 = lmonly4$coefficients[2]
+    vp = c(1,x2)/sqrt(1 + x2^2)
+    vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
+    
+    vvslmonly4 = with(filedatalCD3only4,cbind(Area1,Area3) %*% vv)
+    if(PLOTS){
+      h_vvslmonly4  = hist(vvslmonly4,200,plot = F)
+    }else{
+      h_vvslmonly4  = hist(vvslmonly4,200,plot = F)
+    }
+    
+    fr =  filter1(bf4,1,h_vvslmonly4$mids,h_vvslmonly4$counts)
+    h_vvslmonly4$mids = fr$x
+    h_vvslmonly4$counts = fr$y
+    
+    h_vvslmonly4_max = maxiNu(h_vvslmonly4$mids,h_vvslmonly4$counts,PLOTS,plotpath,"h_vvslmonly4 Detection DN",FALSE,10,10)
+    
+    if ( length(h_vvslmonly4_max$maxl) > 0 )
+    {
+      
+      
+      if (length(h_vvslmonly4_max$maxl$indx) > 2 ) {
+        cutIndex = length(h_vvslmonly4_max$mins$indx) - 1
+        doubleNegtoveBoundary = h_vvslmonly4_max$mins$x[cutIndex]
+        if(PLOTS){
+          text( h_vvslmonly4_max$maxl$x[cutIndex]- 0.1,h_vvslmonly4_max$maxl$y[cutIndex],"DN")
+        }  
+        
+      }else if  (length(h_vvslmonly4_max$maxl$indx) == 2 ) {
+        
+        cutIndex = 2
+        doubleNegtoveBoundary = h_vvslmonly4_max$mins$x[cutIndex]
+        
+        if(PLOTS == TRUE){
+          
+          if(length(h_vvslmonly4_max$maxl$indx) == 2 ){
+            
+            text( h_vvslmonly4_max$maxl$x[cutIndex] - 0.05,h_vvslmonly4_max$maxl$y[cutIndex],"DN")  
+          }
+        }
+      }else{
+        
+        doubleNegtoveBoundary  = h_vvslmonly4_max$mins$x[2]
+        
+      }
+      
+      
+    }
+    else
+    {
+      doubleNegtoveBoundary = max(vvslmonly4)
+    }
+    
+    if(PLOTS){
+      abline(v = doubleNegtoveBoundary, col = 2 , lwd =2 , lty = 2 )
+      dev.off()
+    }
+    
+    sel_doubleNegtoveBoundary  = vvslmonly4 > doubleNegtoveBoundary
+    
+    if(PLOTS){
+      
+      png(filename= paste0(plotpath,"CD3only4 DN Detection",".png"))#plot24
+      le = dim(filedatalCD3only4)[1]
+      samp  = sample(1:le,min(le,1e4))
+      with(filedatalCD3only4[samp,], plot(Area1,Area3,
+                                          pch = 19, cex = 0.2,col = colbr[2- !sel_doubleNegtoveBoundary[samp]],
+                                          main = paste0( CarName , " Select Double Negative ",CarName)))
+      legend("topleft",c("CD4","DN"),col = c(1,2),pch=19 )
+      dev.off()
+    }
+    
+    
+    SumdoubleNegtoveBoundary  = sum(sel_doubleNegtoveBoundary) 
+    
+    vvslmonly4forall = with(filedatalCD3,cbind(Area1,Area3) %*% vv)
+    out  = vvslmonly4forall > doubleNegtoveBoundary
+    
+    
+    
+  }
+  else
+  {
+    
+    out = rep( FALSE, dim(filedatalCD3)[1] )
+    
+  }
+  
+  out
+}
+
+#--------------------------------  
+
+#ini Param-----------------------
+  
+CD45num = 0
+CD45Livenum = 0 
+CD45deadnum = 0
+CD3num = 0 
+CD3Livenum = 0 
+CD3deadnum = 0 
+selcleanCD4_NoDPnum = 0
+selcleanCD8_NoDPnum = 0
+Cd45liveRatio = 0 
+Cd3liveRatio = 0
+Cd3Cd45Ratio = 0  
+
+#wrkingFilepath = files[1]fl#filepath1
+#Load file-----------------------
+
+  filedata = read.csv(wrkingFilepath,header = T)
+  
+  di = dim(filedata)
+  
+  if( ( di[1] > 1e3 ) & ( di[2] > 28 ) ) {
+    
+  runInformation  = getCartrigeNameAdnDevice(wrkingFilepath)
+  
+  CarName = paste0("C",runInformation$Cartnum)
+  
+  Cartnum = runInformation$Cartnum
+  
+ 
+  plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1207/",Cartnum,"/")
+  
+  if(PLOTS){  
+    if(!dir.exists(plotpath)){
+      dir.create(plotpath)
+    }
+  }
+  
+#Remove low width--------------
+  widthb = filedata$Width > 4
+  
+  if(PLOTS) {
+    png(filename= paste0(plotpath,"Width",".png"))
+    hist(filedata$Width,500,xlim = c(0,30),xlab = "Width", main = as.character(CarName))
+    abline(v = 4,col ="red",lwd = 2 )
+    dev.off()
+  }
+  
+  filedata = filedata[widthb,]
+#------------------------------  
+  
+  filedatals =  data.frame(apply(filedata[,ty[1:9]],2,log10))
+  filedatals$FCS <- filedata$Peak9
+  filedatals$sumCh =  apply(filedatals[,1:8],1,sum)
+  
+#Sumch Detection--------------
+  sel_sumCh = RemoveLowSumCH()
+  
+  Num_sel_sumCh  = sum( sel_sumCh )
+  
+  if(  Num_sel_sumCh < sizeLimits[sizeLimits$Type == "NumberOf45","Value"] )  { 
+    #Return Error 1 low number of 45
+    QCResults$ErrorNum = 1
+    QCResults$ErrorString = paste0("ErrorNum =",QCResults$ErrorNum ,"  QCNumberOf45 ( Num_sel_sumCh ) =",Num_sel_sumCh )
+    return(errorH(UseValidationMode,QCResults$ErrorString , plotpath,QCResults ) )
+  }
+  
+  filedatal = filedatals[sel_sumCh,]
+  
+  #Orignal Algorithm 100717DD---------------------
+  sel45 =  Sel45f()
+  filedatal_sel45 = filedatal[sel45,]
+  sel6   = Sel6f()
   
 #Hirsh and Luda Code    
 if(FALSE){
@@ -1346,183 +2077,32 @@ if(FALSE){
 
 dimfiledatal45pl  = dim(filedatal45pl)[1]
 
-if(dimfiledatal45pl < 1e3 ){
+#QCNumberOf45! 
+if(bAddmedianInformation){
   
-  return(errorH(UseValidationMode,paste0("CD45 countes =", dimfiledatal45pl),plotpath))
-}    
-
-Area1DArea2b = 0
-Area1DArea2  = round(median(filedatal[sel45,]$Area1)/median(filedatal[sel45,]$Area2),2)
-if(Area1DArea2 < 1.22 ) {
-  Area1DArea2b = 1
-  #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", Area1DArea2),plotpath))
-}
-
-Area1DArea2 = c(Area1DArea2,Area1DArea2b)
-
-
-#Find Dead---------------
-#plot(filedatal45pl[,c("Area1","Area6")],100)
-
-#change 170717DD
-lm68 = with(filedatal45pl[filedatal45pl[,"Area6"] > 1,],lm(Area8 ~ Area6 ))
-#lm68 = with(filedatal45pl[filedatal45pl[,"Area6"] > -1,],lm(Area8 ~ Area6 ))
-x2 = lm68$coefficients[2]
-vp = c(1,x2)/sqrt(1 + x2^2 )
-vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
-
-# create parallel for cutting low dots
-vpArea6Area8 =  cbind( filedatal45pl$Area6,filedatal45pl$Area8 ) %*% (vp)
-
-if(PLOTS){
-  h_vpArea6Area8 = hist(vpArea6Area8,100,plot = F)
-}else{
-  h_vpArea6Area8 = hist(vpArea6Area8,100,plot = F)
-}
-
-fr = filter1(bf,5,h_vpArea6Area8$mids, h_vpArea6Area8$counts)
-h_vpArea6Area8$mids = fr$x
-h_vpArea6Area8$counts = fr$y
-h_vpArea6Area8_max = maxiNu(h_vpArea6Area8$mids,h_vpArea6Area8$counts,PLOTS,plotpath,"h_vpArea6Area8 SelPreDead",FALSE,30,10)
-
-le = length(h_vpArea6Area8_max$maxl$indx)
-
-if(le >= 2){
+  QCResults = QcCheck("QCNumberOf45",QCResults) 
   
-  h_lm68hpmiddsleMin = h_vpArea6Area8_max$mins$x[2] 
-  
-}else if ( le == 1 ) {
-  
-  hmaxs  = SimpleLeftCut(h_vpArea6Area8_max$maxl$indx[1],h_vpArea6Area8,2e-2)
-
-  h_lm68hpmiddsleMin =  h_vpArea6Area8$mids[hmaxs]
-  
-}else{
-  
-  print(paste0( "le = length(h_vpArea6Area8_max$maxl$indx )le =",le ))
-  #Problem
-}
-
-
-if(PLOTS){
-  abline(v = h_lm68hpmiddsleMin,col  = 3,lwd = 2,lty =2)
-  dev.off()
-}
-
-vpArea6Area8 =  cbind( filedatal$Area6,filedatal$Area8 ) %*% (vp)
-selpredead  = vpArea6Area8 > h_lm68hpmiddsleMin
-
-if(PLOTS){
-  
-  png(filename= paste0(plotpath,"SelPreDead",".png"))#plot11
-  le = dim(filedatal45pl)[1]
-  samp  = sample(1:le,min(le,2e4))
-  
-  with(filedatal[samp,],plot(Area6,Area8 , pch = 19, cex= 0.2, 
-                             xlab = "Area6",ylab = "Area8",
-                             main = paste0("SelPreDead Cut tail ", CarName),
-                             col = colbr[1+selpredead[samp,]]))
-  
-  abline(lm68,col = "blue",lwd = 2)
-  dev.off()
-}
-
-#Cut tail select up Area6 and Are8-------------------------- 
-filedatal45pl_predead = filedatal[selpredead & sel45,]
-
-
-
-
-#FIRST iteration
-le = dim(filedatal45pl_predead)[1]
-samp  = sample(1:le,min(le,4e4))
-Area6 = c(rep(-2,1e4),filedatal45pl_predead[samp,"Area6"])
-Area8 = c(rep(-2,1e4),filedatal45pl_predead[samp,"Area8"])
-lm68s = lm(Area8 ~ Area6 )
-
-
-#Detect Dead------------------------------------------------
-
-x2 = lm68s$coefficients[2]
-vp = c(1,x2)/sqrt(1 + x2^2)
-vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
-vvs = cbind( filedatal45pl_predead$Area6,filedatal45pl_predead$Area8) %*% vv
-
-if(PLOTS){
-  h_lm68hv = hist(vvs,200,plot = F )
-}else{
-  h_lm68hv = hist(vvs,200,plot = F )
-}  
-
-fr =  filter1(bf,1,h_lm68hv$mids,h_lm68hv$counts)
-h_lm68hv$mids = fr$x
-h_lm68hv$counts = fr$y
-
-h_lm68hv_max = maxiNu(h_lm68hv$mids,h_lm68hv$counts,PLOTS,plotpath,"h_lm68hv Detect Deads",FALSE,30,10)
-
-if( length(h_lm68hv_max$maxl) == 0 ){
-  
-  dev.off()
-  h_lm68hv_max = maxiNu(h_lm68hv$mids,h_lm68hv$counts,PLOTS,plotpath,"h_lm68hv Detect Deads second",FALSE,20,10)
-
-}
-
-#No max
-if( length(h_lm68hv_max$maxl) != 0 ){
-  
-  if(length(h_lm68hv_max$maxl$x) == 1){
+  if(QCResults$ErrorNum != 0 ){
     
-    cut0.02ind = max(1,SimpleLeftCut(h_lm68hv_max$maxl$indx,h_lm68hv,2e-1) - 1)
+    if ( USE_ACCEPTANCE_CRITERIA){
+      return  ( errorH(UseValidationMode,QCResults$ErrorString, plotpath,QCResults ) )
+    }
     
-  }else{
-  
-    cut0.02ind = h_lm68hv_max$mins$indx[length(h_lm68hv_max$mins$indx) - 1]
   }
   
-}else{
+  addata = data.frame( testNum = Cartnum,Type = "CD45",size = dim(filedatal[sel45,])[1] , t(apply(filedatal[sel45,c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
   
-  cut0.02ind = 1
-  
+  addata = data.frame( testNum = Cartnum,Type = "Junk",size = dim(filedatal[!sel45,])[1] , t(apply(filedatal[!sel45,c(paste0("Area",1:8),"FCS")],2,median)))
+  medianDat = rbind( medianDat , addata )
 }
 
+#if(dimfiledatal45pl < 1e3 ){
+#  return(errorH(UseValidationMode,paste0("CD45 countes =", dimfiledatal45pl),plotpath))
+#}    
 
-
-seldeadv = h_lm68hv$mids[cut0.02ind]
-
-if(PLOTS){
-  
-  abline(v = seldeadv ,col = 2,lwd = 2,lty = 2)
-  dev.off()
-}
-
-
-vvs = cbind( filedatal$Area6,filedatal$Area8) %*% vv
-seldead = vvs < seldeadv
-
-vvsAll = cbind( filedatal$Area6,filedatal$Area8) %*% vv
-seldeadAll = ( vvsAll < seldeadv ) & selpredead
-
-DeadNum  = sum(seldeadAll & sel45 )
-
-if(PLOTS){
-  
-  png(filename= paste0(plotpath,"Dead",".png"))
-  le = dim(filedatal[selpredead,])[1]
-  samp  = sample(1:le,min(le,2e4))
-  filedatalp = filedatal[selpredead,]
-  
-  with( filedatalp[samp,],plot( Area6 , Area8 , pch = 19, cex= 0.2, 
-        xlab = "Area6",ylab = "Area8",
-        xlim = c( 0,quantile(Area6,0.999,na.rm = T)) , 
-        ylim = c( 0.1,max(Area8,na.rm = T) ) ,
-        main = paste0("Area8 vs Area6 ", CarName),
-        col = colbr[1+(seldead[selpredead])[samp]]))
-  
-  legend("topleft",c("live","Dead"),col = c(1,2),pch=19 )
-  #abline(lm68live,col  = 5, lwd = 2 )
-  dev.off()
-  
-}
+#Find Dead---------------
+seldeadAll = SelDeadf()
 
 #CD48-------------------------------------------------------------
 if(FALSE){
@@ -1592,22 +2172,6 @@ selCD3countes  = sum(selCD3)
 selCD3Live =  (!seldeadAll) & selCD3
 selCD3Dead =   seldeadAll & selCD3
 
-DeadCD3Area7dArea8b = 0
-DeadCD3Area7dArea8 = 0 
-if( sum(selCD3Dead) > 3 ){
-  DeadCD3Area7dArea8  = round(median(filedatal[selCD3Dead,]$Area7) / median( filedatal[selCD3Dead,]$Area8 ),2)
-  if( ( DeadCD3Area7dArea8 < 1.2 ) | ( DeadCD3Area7dArea8 > 2.1 ) )  {
-    DeadCD3Area7dArea8b = 1
-    #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", deadCD3Area7dArea8),plotpath))
-  }
-}else{
-  
-  DeadCD3Area7dArea8b = 1
-  
-}  
-
-DeadCD3Area7dArea8 = c(DeadCD3Area7dArea8,DeadCD3Area7dArea8b)
-
 CD3Livenum = sum( selCD3Live )
 CD3deadnum = sum( selCD3Dead )
 CD3num  = sum(selCD3)
@@ -1629,357 +2193,24 @@ if(PLOTS){
   with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,main = paste0(CarName," CD4 CD8 Create speration direction" )))
 }
 
-
 da1 = rbind(filedatal45pl[selCD3,c("Area4","Area3")],data.frame(Area4 =rep(1,1e4),Area3 = rep(1,1e4)))
 lm34 = with(da1, lm(Area3 ~ Area4))
 
-if(PLOTS){  
-  
-  abline(lm34,col = 3,lwd = 2)
-  dev.off()
-  
-}
-
-
-
 #Create parallel for to cut tail for better differ cd4 and cd8 ----------------------
-
-x2 = lm34$coefficients[2]
-vp = c(1,x2)/sqrt(1 + x2^2)
-vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
-vps34 = with(filedatalCD3,cbind(Area4,Area3) %*% vp)
-
-if(PLOTS){
-
-  h_vps34  = hist(vps34,200,plot = F)
-}else{
-  
-  h_vps34  = hist(vps34,200,plot = F)
-}
-
-fr =  filter1(bf,1,h_vps34$mids,h_vps34$counts)
-h_vps34$mids = fr$x
-h_vps34$counts = fr$y
-
-h_lm68hv_max = maxiNu(h_vps34$mids,h_vps34$counts,PLOTS,plotpath,"h_vps34 Cut Tail",FALSE,30,10)
-if( length(h_lm68hv_max$maxl) == 0 ){
-   
-   dev.off()
-   h_lm68hv_max = maxiNu(h_vps34$mids,h_vps34$counts,PLOTS,plotpath,"maxNe_h_vps34",FALSE,20,10)
-}
-
-leMax = length(h_lm68hv_max$maxl$x)
-
-if(leMax > 0 ){
-  
-  if ( leMax >= 3 ) {
-    
-    cutpointIndex = h_lm68hv_max$mins$indx[2]
-    cutpoint = h_lm68hv_max$mins$x[2]
-    if(PLOTS){
-      
-      text( cutpoint - 0.1,h_lm68hv_max$maxl$y[2],"Tail")
-    }
-    
-    #no tail 
-  }else {
-    
-    # limit the cut by 1
-    cutpoint = h_lm68hv_max$mins$x[1]
-    cutpointIndex = h_lm68hv_max$mins$indx[1]
-    if( PLOTS){
-      
-      text( h_lm68hv_max$maxl$x[1] -0.2 ,h_lm68hv_max$maxl$y[1],"CD4")
-    }
-    
-  }
-  
-  if( PLOTS){
-    abline(v = cutpoint,col = 1,lwd = 2,lty = 2 )
-    dev.off()
-  }
-}else{
-  
-  cutpoint = min(vps34)
-  if( PLOTS){
-    
-    abline(v = cutpoint,col = 1,lwd = 2,lty = 2 )
-    
-    dev.off()
-  }
-  
-}  
-
-
-selNonTailCD48 =  vps34  >  cutpoint
+selNonTailCD48 = SelNonTailCD48f()
 filedatalCD3_sel_tail = filedatalCD3[selNonTailCD48,]
-
-#Addtion120717----     
-#   }
-#   
-#   out = "x1"
-#   out
-# }
-# 
-# if(FALSE){
-#   if(FALSE){
-#     
-    #------------------
-
 
 #Detect 4 and 8-------------------------------------------------------------
 # Use filedatalCD3_sel_tail to find 4 and by dividing
- bUseRatio = FALSE
- ratio3vd4 = filedatalCD3_sel_tail$Area3 - filedatalCD3_sel_tail$Area4
- h34 = hist(ratio3vd4,100,plot = F)
- h_34max = maxiNu(h34$mids,h34$counts,PLOTS,plotpath,"Detect h34 by ratio ch3-ch4",TRUE,50,10)
- if( length(h_34max$maxl$indx) == 2 ){
-   
-   
-      middelValue = mean(h_34max$mins$x)
-      ratio3vd4 = filedatalCD3$Area3 - filedatalCD3$Area4
-      selType40r8 = ratio3vd4 < middelValue
-      
-      if(PLOTS){
-        png(filename= paste0(plotpath,"CD3_Selection CD4_CD8 USE Ratio",".png"))
-        with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+!selType40r8[samp]],main = paste0(CarName," CD3_Selection CD4_CD8 USE Ratio")))
-        dev.off()  
-      }
-      
-      bUseRatio = TRUE
- }
-
-if(!bUseRatio ) { 
-  x2 = lm34$coefficients[2]
-  vp = c(1,x2)/sqrt(1 + x2^2)
-  vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
-  vvs34woTail = with(filedatalCD3_sel_tail,cbind(Area4,Area3) %*% vv)
-  
-  if(PLOTS){
-    #change new max 210617DD
-    #png(filename= paste0(plotpath,"vvs34woTail",".png"))
-    #h_vvs34woTail  = hist(vvs34woTail,100)
-    h_vvs34woTail  = hist(vvs34woTail,150,plot = F)
-    
-  }else{
-    
-    h_vvs34woTail  = hist(vvs34woTail,100,plot = F)
-    
-  } 
-  
-  fr =  filter1(bf,1,h_vvs34woTail$mids,h_vvs34woTail$counts)
-  h_vvs34woTail$mids = fr$x
-  h_vvs34woTail$counts = fr$y
-  
-  h_vvs34woTailvvs_max = maxiNu(h_vvs34woTail$mids,h_vvs34woTail$counts,PLOTS,plotpath,"h_vvs34woTail Detect CD4 CD8",FALSE,10,6)
-  
-  minbtween = 0 #Version4 Continue 
-  #find the minmum between max ( asume 2 )
-  #change new max 250617DD
-  # if( length(h_vvs34woTailvvs_max$maxl$indx) >= 2){
-  #   
-  #   minbtween = h_vvs34woTailvvs_max$mins$x[2]
-  # }
-  
-  lenMax = length(h_vvs34woTailvvs_max$maxl$indx)
-  
-  if( lenMax > 2){
-    
-    bounary4 = h_vvs34woTailvvs_max$mins$x[lenMax]
-    bounary8 = h_vvs34woTailvvs_max$mins$x[2]
-    abline(v = bounary4, col = 4, lwd = 2 ,lty = 2)
-    abline(v = bounary8, col = 4, lwd = 2 ,lty = 2)
-    
-    sel4  = vvs34woTail > bounary4
-    sel8  = vvs34woTail < bounary8
-    
-    me4  = mean(vvs34woTail[sel4])
-    sd4  = sd(vvs34woTail[sel4])
-    me8  = mean(vvs34woTail[sel8])
-    sd8  = sd(vvs34woTail[sel8])
-  
-    sdall = sd8+sd4
-    minbtween = me8 + (me4  - me8)*sd4/sdall   
-  }
-  
-  if( lenMax == 2){
-    
-    minbtween = h_vvs34woTailvvs_max$mins$x[2]
-    
-    sel4  = vvs34woTail > minbtween
-    sel8  = vvs34woTail < minbtween
-    
-  }
-  
-  #in thecase only one is detect
-  if( lenMax == 1){
-    
-    ra = range(vvs34woTail)
-    
-    if(h_vvs34woTailvvs_max$maxl$x > ( ra[1] + 0.6 * ( ra[2] - ra[1]) ) ){
-      
-      minbtween = findbycut(h_vvs34woTailvvs_max$maxl$indx[1],h_vvs34woTail,5e-2,1)
-      minbtween = h_vvs34woTail$mids[minbtween]
-      
-    }else if(h_vvs34woTailvvs_max$maxl$x < ( ra[1] + 0.4 * ( ra[2] - ra[1]) ) ){
-      
-      minbtween = h_vvs34woTail$mids[findbycut(h_vvs34woTailvvs_max$maxl$indx[1],h_vvs34woTail,5e-2,0)] 
-    }
-    else{
-      
-      minbtween = h_vvs34woTailvvs_max$mins$x[2]
-    }
-  
-  }
-  
-  if( lenMax == 0  ) {
-    
-    med3  = median( filedatalCD3_sel_tail$Area3 )
-    med4  = median( filedatalCD3_sel_tail$Area4 )
-    
-    diffmedian = med3 - med4
-    
-    # 4 is bigger than 3
-    if ( diffmedian < 0 ){
-        
-        #All CD8 
-        minbtween =  min(vvs34woTail)
-      
-    }else{
-      
-      #All CD8 
-      minbtween =  max(vvs34woTail)
-      
-    }
-      
-  }
-  
-  if(PLOTS){
-    
-    abline(v = minbtween, col = 3, lwd = 2 ,lty = 2)
-    dev.off()
-    
-  }
-  
-  #Create CD4 CD8 selection 
-  vvs34 = with(filedatalCD3,cbind(Area4,Area3) %*% vv)
-  #create between 4 and 8 selection variable
-  selType40r8 = vvs34 > minbtween
-  
-  le = dim(filedatalCD3)[1]
-  samp  = sample(1:le,min(le,1e4))
-  
-  if(PLOTS){
-    
-    png(filename= paste0(plotpath,"CD3_Selection CD4_CD8",".png"))
-    with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+!selType40r8[samp]],main = paste0(CarName," First Cut for CD4 and CD8")))
-    dev.off()  
-  }
-
-}
+selType40r8 = SelType40r8f()
+ 
 #Clean ONLY CD4 from Double Negtive --------------------------------------
 filedatalCD3only4 = filedatalCD3[!selType40r8,]
 bType8 = all( selType40r8 )
 bType4 = all( !selType40r8 )
 bOnlyOneType48 = bType8 | bType4
 
-if(!bType8) 
-{
-  
-  
-  le = dim(filedatalCD3only4)[1]
-  samp  = sample(1:le,min(le,1e4))
-  da1 = rbind(filedatalCD3only4[,c("Area1","Area3")],data.frame(Area1 =rep(1,1e4),Area3 = rep(1,1e4)))
-  lmonly4 = with(da1, lm(Area3 ~ Area1))
-  
-  
-  x2 = lmonly4$coefficients[2]
-  vp = c(1,x2)/sqrt(1 + x2^2)
-  vv  = c(1,-1/x2)/sqrt(1 + (1/x2)^2)
-  
-  vvslmonly4 = with(filedatalCD3only4,cbind(Area1,Area3) %*% vv)
-  if(PLOTS){
-    h_vvslmonly4  = hist(vvslmonly4,200,plot = F)
-  }else{
-    h_vvslmonly4  = hist(vvslmonly4,200,plot = F)
-  }
-  
-  fr =  filter1(bf4,1,h_vvslmonly4$mids,h_vvslmonly4$counts)
-  h_vvslmonly4$mids = fr$x
-  h_vvslmonly4$counts = fr$y
-  
-  h_vvslmonly4_max = maxiNu(h_vvslmonly4$mids,h_vvslmonly4$counts,PLOTS,plotpath,"h_vvslmonly4 Detection DN",FALSE,10,10)
-  
-  if ( length(h_vvslmonly4_max$maxl) > 0 )
-  {
-    
-  
-    if (length(h_vvslmonly4_max$maxl$indx) > 2 ) {
-      cutIndex = length(h_vvslmonly4_max$mins$indx) - 1
-      doubleNegtoveBoundary = h_vvslmonly4_max$mins$x[cutIndex]
-      if(PLOTS){
-        text( h_vvslmonly4_max$maxl$x[cutIndex]- 0.1,h_vvslmonly4_max$maxl$y[cutIndex],"DN")
-      }  
-      
-    }else if  (length(h_vvslmonly4_max$maxl$indx) == 2 ) {
-      
-      cutIndex = 2
-      doubleNegtoveBoundary = h_vvslmonly4_max$mins$x[cutIndex]
-      
-      if(PLOTS == TRUE){
-        
-        if(length(h_vvslmonly4_max$maxl$indx) == 2 ){
-          
-            text( h_vvslmonly4_max$maxl$x[cutIndex] - 0.05,h_vvslmonly4_max$maxl$y[cutIndex],"DN")  
-        }
-      }
-    }else{
-      
-      doubleNegtoveBoundary  = h_vvslmonly4_max$mins$x[2]
-      
-    }
-  
-  
-  }
-  else
-  {
-    doubleNegtoveBoundary = max(vvslmonly4)
-  }
-  
-  if(PLOTS){
-    abline(v = doubleNegtoveBoundary, col = 2 , lwd =2 , lty = 2 )
-    dev.off()
-  }
-  
-  sel_doubleNegtoveBoundary  = vvslmonly4 > doubleNegtoveBoundary
-  
-  if(PLOTS){
-    
-    png(filename= paste0(plotpath,"CD3only4 DN Detection",".png"))#plot24
-    le = dim(filedatalCD3only4)[1]
-    samp  = sample(1:le,min(le,1e4))
-    with(filedatalCD3only4[samp,], plot(Area1,Area3,
-                                        pch = 19, cex = 0.2,col = colbr[2- !sel_doubleNegtoveBoundary[samp]],
-                                        main = paste0( CarName , " Select Double Negative ",CarName)))
-    legend("topleft",c("CD4","DN"),col = c(1,2),pch=19 )
-    dev.off()
-  }
-  
-  
-  SumdoubleNegtoveBoundary  = sum(sel_doubleNegtoveBoundary) 
-  
-  vvslmonly4forall = with(filedatalCD3,cbind(Area1,Area3) %*% vv)
-  sel_doubleNegtoveBoundaryIndForAll  = vvslmonly4forall > doubleNegtoveBoundary
-  
-  
-
-}
-else
-{
-  
-  sel_doubleNegtoveBoundaryIndForAll = rep( FALSE, dim(filedatalCD3)[1] )
-
-}
+sel_doubleNegtoveBoundaryIndForAll = sel_doubleNegtovef()
 
 #CD4 without Double Negtive
 selcleanCD4 = (!sel_doubleNegtoveBoundaryIndForAll  & (!selType40r8))
@@ -2084,43 +2315,6 @@ selcleanCD8_NoDP  = selType40r8 & (!sel_DP )
 
 selcleanCD4_NoDPnum = sum(selcleanCD4_NoDP)
 selcleanCD8_NoDPnum = sum(selcleanCD8_NoDP)
-
-Area4DArea8b = 0
-Area4DArea8  = round(( median(filedatalCD3[selcleanCD4_NoDP,]$Area4) + median( filedatalCD3[selcleanCD4_NoDP,]$Area5 ) )/( median(filedatalCD3[selcleanCD8_NoDPnum,]$Area4) + median(filedatalCD3[selcleanCD8_NoDP,]$Area5) ),2)
-if ( (Area4DArea8 < 0.0674 )| (Area4DArea8 < 0.4385 ) ) {
-  Area4DArea8b = 1
-  #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", Area4DArea8),plotpath))
-}
-Area4DArea8 = c(Area4DArea8,Area4DArea8b)
-
-CD4Area2dArea4b = 0
-CD4Area2dArea4  = round(median( filedatalCD3[selcleanCD4_NoDP,]$Area2 ) / median( filedatalCD3[selcleanCD4_NoDP,]$Area4 ),2)
-if( (CD4Area2dArea4 < 1.323 ) | (CD4Area2dArea4 >  5.3 ) ) {
-  CD4Area2dArea4b = 1
-  #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", CD4Area2dArea4),plotpath))
-}
-CD4Area2dArea4 = c(CD4Area2dArea4,CD4Area2dArea4b)
-
-CD8Area4dArea5b = 0
-CD8Area4dArea5  = round(median(filedatalCD3[selcleanCD8_NoDP,]$Area4) / median( filedatalCD3[selcleanCD8_NoDP,]$Area5 ),2)
-if( ( CD8Area4dArea5 < 1.5 ) | ( CD8Area4dArea5 > 3.71 ) )  {
-  CD8Area4dArea5b = 1
-  #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", CD8Area4dArea5),plotpath))
-}
-
-CD8Area4dArea5 = c(CD8Area4dArea5,CD8Area4dArea5b)
-
-rb = as.data.frame(rbind(Area1DArea2,DeadCD3Area7dArea8,Area4DArea8,CD4Area2dArea4,CD8Area4dArea5))
-rb$VariableName <-  rownames(rb)
-rownames(rb) <- NULL
-colnames(rb)  = c("Value","NotInRange","VariableName")
-rb = rb[, c("VariableName","Value","NotInRange")]
-
-if(PLOTS){
-  
-  write.csv(rb,paste0(plotpath,"Results.txt"),row.names = F)
-}
-
 
 if(PLOTS){graphics.off()}
 
@@ -2306,4 +2500,4 @@ if(UseValidationMode == TRUE){
 #runEnv ----- 
 
 
-runAlgo_shortData(args[1])
+#runAlgo_shortData(args[1])
