@@ -1,4 +1,4 @@
-#Ver4
+#Ver6
 #library(stringr)
 #library("mclust", lib.loc="~/R/win-library/3.2") 
 #library(ggplot2)
@@ -253,6 +253,20 @@ filter1 <- function(flitercoff,delay,x,y){
   out 
 }
 
+getDensity <- function(x, si , fc ){
+  #x = sumCh
+  #si =200
+  #fc = bf
+  h = hist(x,si,plot = F )
+  maxXhY = max(h$counts)
+  hd = density(x)
+  hd$y = filter(fc,hd$y)
+  hd$y = maxXhY * hd$y/max(hd$y)
+  hd
+} 
+
+
+
 maxdetcetion <- function(sqin,maxpre,maxDiff,minpre,minDiff,plotFlag,xin,...){
   
   sq = sqin - min(sqin)+ 0.1 
@@ -332,8 +346,69 @@ maxdetcetion <- function(sqin,maxpre,maxDiff,minpre,minDiff,plotFlag,xin,...){
   list(maxl = maxl,mins = mins)
 }
 
-errorH <- function(UseValidationMode1,ErrorString,plotpath1){
-
+#oldErrorVersion
+errorH1 <- function(UseValidationMode1,ErrorString,plotpath1){}
+##-------------------------------------------- 
+#   if(UseValidationMode1 == TRUE) {
+#     
+#     Variable = c(
+#       "Device",
+#       "Cartrige",
+#       "CD45_total",
+#       "CD45_live",
+#       "CD45_dead",
+#       "CD3_total",
+#       "CD3_live",
+#       "CD3_dead",
+#       "CD4_live",
+#       "CD8_live",
+#       "Cd45liveRatio",
+#       "Cd3liveRatio",
+#       "Cd3Cd45Ratio",
+#       #"CD4CD8Ratio",
+#       "CD4CD3Ratio",
+#       "CD8CD3Ratio",
+#       "CD4CD8Ratio")
+#     
+#     Values  = rep(0,length(Variable))
+#   
+#     write(ErrorString,paste0(plotpath1,"ErrorText.txt"))  
+#     
+#     df = data.frame(Values,Variable)
+#     df
+#   }
+#   else{
+#     Variable = c(
+#       #"Device",
+#       "Cartrige",
+#       "CD45_total",
+#       "CD45_live",
+#       "CD45_dead",
+#       "CD3_total",
+#       "CD3_live",
+#       "CD3_dead",
+#       "CD4_live",
+#       "CD8_live",
+#       "Cd45liveRatio",
+#       "Cd3liveRatio",
+#       "Cd3Cd45Ratio",
+#       #"CD4CD8Ratio",
+#       "CD4CD3Ratio",
+#       "CD8CD3Ratio",
+#       "CD4CD8Ratio") 
+#     
+#     Values  = rep(0,length(Variable))
+#     
+#     df = data.frame(Values,Variable)
+#     
+#     paste0(df[,c("Values")],collapse = ",")
+#     
+#   }
+#   
+# }
+#--------------
+errorH <- function(UseValidationMode1,ErrorString,plotpath1,QcResultsV){
+  
   if(UseValidationMode1 == TRUE) {
     
     Variable = c(
@@ -353,10 +428,14 @@ errorH <- function(UseValidationMode1,ErrorString,plotpath1){
       #"CD4CD8Ratio",
       "CD4CD3Ratio",
       "CD8CD3Ratio",
-      "CD4CD8Ratio")
+      "CD4CD8Ratio",
+      "ErrorNum",
+      "WarningNums")
     
     Values  = rep(0,length(Variable))
-  
+    Values[length(Values)-1]  = QcResultsV$ErrorNum
+    Values  = as.character( Values )
+    
     write(ErrorString,paste0(plotpath1,"ErrorText.txt"))  
     
     df = data.frame(Values,Variable)
@@ -380,9 +459,13 @@ errorH <- function(UseValidationMode1,ErrorString,plotpath1){
       #"CD4CD8Ratio",
       "CD4CD3Ratio",
       "CD8CD3Ratio",
-      "CD4CD8Ratio") 
+      "CD4CD8Ratio",
+      "ErrorNum",
+      "WarningNums") 
     
     Values  = rep(0,length(Variable))
+    Values[length(Values)-1]  = QcResultsV$ErrorNum
+    Values  = as.character( Values )
     
     df = data.frame(Values,Variable)
     
@@ -571,7 +654,7 @@ Ratiolimits =  data.frame(checkType,RatioMinlimits,RatioMaxlimits)
 sizeLimits = data.frame(Type = c("NumberOf45","NumOfCD3Live","NumOfCD3LiveNegative","NumCD3Dead","NumCD4","NumCD8"),Value = c(1000,300,300,300,300,300) ,stringsAsFactors = F)
 
 #main function
-runAlgo_shortData <- function(wrkingFilepath){
+main <- function(wrkingFilepath){
   
 #In Function --------------------
   #QCNumberOf45!
@@ -754,12 +837,14 @@ RemoveLowSumCH <- function(){
   hsumch$counts = fr$y
   fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
   
-  #Try 170717DD 
+  #Try 190717DD 
   if(FALSE){
-    hsumch = density(sumCh)
-    hsumch$y = 100*hsumch$y/max(hsumch$y)
-    with(hsumch,plot(x,y))
-    fmax_hsumch = maxiNu(hsumch$x,hsumch$y,FALSE,plotpath,"sumCh",FALSE,30,10)
+    
+    hsumch = getDensity(sumCh,200,bf)
+    plot(hsumch$x,hsumch$y,"l")
+    fmax_hsumch = maxiNu(hsumch$x,hsumch$y,PLOTS,plotpath,"sumCh1",TRUE,30,10)
+    dev.off()
+    
   }
   
   
@@ -1352,10 +1437,16 @@ SelType40r8f <-function(){
     
     if( lenMax > 2){
       
-      bounary4 = h_vvs34woTailvvs_max$mins$x[lenMax]
+      #Algcorrection 
+      #bounary4 = h_vvs34woTailvvs_max$mins$x[lenMax]
+      bounary4 = h_vvs34woTailvvs_max$mins$x[lenMax - 1]
       bounary8 = h_vvs34woTailvvs_max$mins$x[2]
-      abline(v = bounary4, col = 4, lwd = 2 ,lty = 2)
-      abline(v = bounary8, col = 4, lwd = 2 ,lty = 2)
+      
+      if( PLOTS ){
+        
+        abline(v = bounary4, col = 4, lwd = 2 ,lty = 2)
+        abline(v = bounary8, col = 4, lwd = 2 ,lty = 2)
+      }
       
       sel4  = vvs34woTail > bounary4
       sel8  = vvs34woTail < bounary8
@@ -1553,9 +1644,108 @@ sel_doubleNegtovef <- function(){
   out
 }
 
+FindDoublepositive <- function(){
+  
+  selpreDP  = !sel_doubleNegtoveBoundaryIndForAll
+  
+  if(PLOTS){
+    png(filename= paste0(plotpath,"FinalArea4Area3",".png"))
+    le = dim(filedatalCD3)[1]
+    samp  = sample(1:le,min(le,1e4))
+    
+    with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+(selpreDP + 2*selType40r8 )[samp]],main = paste0(CarName," Pre Double Positive ") ))
+    legend("topleft",c("CD4DN","CD4","LoWCD8","CD8"),col = c(1,2,3,4),pch=19 )
+    dev.off()
+  }
+  
+  if( !bOnlyOneType48 )
+  {
+    
+    
+    preDP =  filedatalCD3[selpreDP,c("Area4","Area3")]
+    preDPselmin = selType40r8[selpreDP]
+    
+    g1 =  preDP[preDPselmin,]
+    g2 =  preDP[!preDPselmin,]
+    
+    g1m = colMeans(g1,na.rm = T)
+    g2m = colMeans(g2,na.rm = T)
+    
+    us = cbind(g1m,g2m)
+    fl = flda(us[,1],us[,2],g1,g2)
+    
+    if ( sum(is.na(fl[,1])) == 0 ){
+      
+      fldaP = fldaProjection(preDP,us[,1],us[,2],fl)
+      
+      
+      if(PLOTS){
+        png(filename= paste0(plotpath,"fldaPForDoublePositive",".png"))
+        h_fldaP  = hist(fldaP,200,main = paste0(CarName," LDA for finding the Double Positive points"),plot = T )
+      }else{
+        h_fldaP  = hist(fldaP,200,plot = F )
+      }  
+      d1 = dim(g1)[1]
+      d2 = dim(g2)[1]
+      p1 = d1/(d1+d2)
+      p2 = d2/(d1+d2)
+      vp = log(p2/p1)
+      
+      if(PLOTS){
+        abline(v = vp, col = 3, lwd = 2 , lty = 2)
+        
+      }
+      
+      ind = min(which(h_fldaP$mids > vp )):(length( h_fldaP$mids))
+      cutvalueUp =  min(max(h_fldaP$counts[ind])* 4e-2 + min(h_fldaP$counts[ind]),30)
+      upind  = min(which(h_fldaP$counts[ind] > cutvalueUp ) ) 
+      upind = ind[1] + upind
+      
+      if(PLOTS){
+        abline(v = h_fldaP$mids[upind],col =2 , lwd = 2 ,lty = 2 )
+      }
+      
+      ind = max(which(h_fldaP$mids < vp )) : 1
+      cutvalueUDown =  min(max(h_fldaP$counts[ind])* 4e-2 + min(h_fldaP$counts[ind]),30)
+      downind  = min(which(h_fldaP$counts[ind] > cutvalueUDown ) ) 
+      downind = ind[1] - downind
+      
+      if(PLOTS){
+        abline(v = h_fldaP$mids[downind],col =2 , lwd = 2 ,lty = 2 )
+        dev.off()
+      }
+      
+      filedatalCD3forProojection =  filedatalCD3[,c("Area4","Area3")]
+      
+      
+      fldapreDPCD3 = fldaProjection(filedatalCD3forProojection,us[,1],us[,2],fl)
+      
+      out  = !((h_fldaP$mids[downind] < fldapreDPCD3 ) & (h_fldaP$mids[upind] > fldapreDPCD3 ))
+      out = selpreDP & !out
+      
+      if(PLOTS){
+        
+        png(filename= paste0(plotpath,"DoublePositive_Area4_Area3",".png"))
+        le = dim(filedatalCD3)[1]
+        samp  = sample(1:le,min(le,2e4))
+        with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = c(0.2,0.6)[1  + out[samp]],col = colbr[1  + out[samp]  ],main = paste0(CarName," Select Double Positive") ))
+        dev.off()
+      }
+    }else{
+      out = rep(FALSE,dim(filedatalCD3)[1])
+    }
+    
+  }else{
+    out = rep(FALSE,dim(filedatalCD3)[1])
+  }
+  
+  out
+  
+}  
+
 #--------------------------------  
 
-#ini Param-----------------------
+#  ini Param -----------------------
   
 CD45num = 0
 CD45Livenum = 0 
@@ -1576,21 +1766,28 @@ Cd3Cd45Ratio = 0
   
   di = dim(filedata)
   
-  if( ( di[1] > 1e3 ) & ( di[2] > 28 ) ) {
-    
+  #Extract Cartrige num  
   runInformation  = getCartrigeNameAdnDevice(wrkingFilepath)
   
   CarName = paste0("C",runInformation$Cartnum)
   
   Cartnum = runInformation$Cartnum
   
- 
   plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1207/",Cartnum,"/")
   
   if(PLOTS){  
     if(!dir.exists(plotpath)){
       dir.create(plotpath)
     }
+  }
+  
+  #corrupt file Error
+  if( !( ( di[1] > 1e3 ) & ( di[2] > 28 ) ) ){
+    #Error Corrupt input file
+    QCResults$ErrorString  =  "Corrupt input file"
+    QCResults$ErrorNum = 99
+    return  ( errorH(UseValidationMode,QCResults$ErrorString, plotpath,QCResults ) )
+    
   }
   
 #Remove low width--------------
@@ -1624,11 +1821,12 @@ Cd3Cd45Ratio = 0
   
   filedatal = filedatals[sel_sumCh,]
   
+  
   #Orignal Algorithm 100717DD---------------------
   sel45 =  Sel45f()
   filedatal_sel45 = filedatal[sel45,]
   sel6   = Sel6f()
-  
+
 #Hirsh and Luda Code    
 if(FALSE){
   
@@ -1937,7 +2135,6 @@ if(FALSE){
   
   filedatal45pl = filedatal[sel45,]
   selCD3 =  sel6 & sel45
-  
   #--------------------
   #Old CODE 280617
   if(FALSE){
@@ -2047,8 +2244,6 @@ if(FALSE){
   }
   
   
-  
-
   #Debug 280617DD
   
   #selArea1 = filedatal$Area1 > cutLowArea1
@@ -2075,10 +2270,18 @@ if(FALSE){
   
   }
 
-dimfiledatal45pl  = dim(filedatal45pl)[1]
+#Find Dead---------------
+seldeadAll = SelDeadf()
 
-#QCNumberOf45! 
+#QC45! 
 if(bAddmedianInformation){
+  
+  NumOfCD3Live = sum((!seldeadAll) & selCD3)
+  
+  addata = data.frame( testNum = Cartnum,Type = "CD3" , size = dim(filedatal[(!seldeadAll) & selCD3,])[1], t(apply(filedatal[(!seldeadAll) & selCD3,c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
+  addata = data.frame( testNum = Cartnum,Type = "NoCD3" , size = dim(filedatal[(!seldeadAll) & (!selCD3),])[1] , t(apply(filedatal[(!seldeadAll) & (!selCD3),c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
   
   QCResults = QcCheck("QCNumberOf45",QCResults) 
   
@@ -2097,14 +2300,7 @@ if(bAddmedianInformation){
   medianDat = rbind( medianDat , addata )
 }
 
-#if(dimfiledatal45pl < 1e3 ){
-#  return(errorH(UseValidationMode,paste0("CD45 countes =", dimfiledatal45pl),plotpath))
-#}    
-
-#Find Dead---------------
-seldeadAll = SelDeadf()
-
-#CD48-------------------------------------------------------------
+#CD48----------------------------------
 if(FALSE){
 
   #Find CD3
@@ -2168,9 +2364,43 @@ if(FALSE){
   selCD3 = filedatal45pl$Area6 > CD3selectionBoundary
 }
 
-selCD3countes  = sum(selCD3)
+#QC3!
+if(bAddmedianInformation){
+  
+  NumOfCD3LiveNegative = sum((!seldeadAll) & (!selCD3))
+  
+  QCResults = QcCheck("QC3",QCResults) 
+  
+  if(QCResults$ErrorNum != 0 ){
+    
+    if ( USE_ACCEPTANCE_CRITERIA){
+      
+      return(errorH(UseValidationMode,QCResults$ErrorString , plotpath,QCResults))
+    }
+  }
+}
+
 selCD3Live =  (!seldeadAll) & selCD3
 selCD3Dead =   seldeadAll & selCD3
+
+#QCDraq7!
+if(bAddmedianInformation){
+  
+  addata = data.frame( testNum = Cartnum,Type = "CD3Live" , size = dim(filedatal[selCD3Live,])[1], t(apply(filedatal[selCD3Live,c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
+  addata = data.frame( testNum = Cartnum,Type = "CD3Dead" , size = dim(filedatal[selCD3Dead,])[1], t(apply(filedatal[selCD3Dead,c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
+  
+  NumCD3Dead = sum( selCD3Dead )
+  
+  QCResults = QcCheck("QCDraq7",QCResults)
+  if(QCResults$ErrorNum != 0 ){
+    
+    if ( USE_ACCEPTANCE_CRITERIA){
+      return(errorH(UseValidationMode,QCResults$ErrorString, plotpath,QCResults ) ) 
+    }
+  }
+}  
 
 CD3Livenum = sum( selCD3Live )
 CD3deadnum = sum( selCD3Dead )
@@ -2216,109 +2446,61 @@ sel_doubleNegtoveBoundaryIndForAll = sel_doubleNegtovef()
 selcleanCD4 = (!sel_doubleNegtoveBoundaryIndForAll  & (!selType40r8))
 
 #Find the Double positive ------------------------------------
-selpreDP  = !sel_doubleNegtoveBoundaryIndForAll
+sel_DP = FindDoublepositive()
 
-if(PLOTS){
-  png(filename= paste0(plotpath,"FinalArea4Area3",".png"))
-  le = dim(filedatalCD3)[1]
-  samp  = sample(1:le,min(le,1e4))
-  
-  with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+(selpreDP + 2*selType40r8 )[samp]],main = paste0(CarName," Pre Double Positive ") ))
-  legend("topleft",c("CD4DN","CD4","LoWCD8","CD8"),col = c(1,2,3,4),pch=19 )
-  dev.off()
-}
-
-if( !bOnlyOneType48 )
-{
-  
-  
-  preDP =  filedatalCD3[selpreDP,c("Area4","Area3")]
-  preDPselmin = selType40r8[selpreDP]
-  
-  g1 =  preDP[preDPselmin,]
-  g2 =  preDP[!preDPselmin,]
-  
-  g1m = colMeans(g1,na.rm = T)
-  g2m = colMeans(g2,na.rm = T)
-  
-  us = cbind(g1m,g2m)
-  fl = flda(us[,1],us[,2],g1,g2)
-  
-  if ( sum(is.na(fl[,1])) == 0 ){
-  
-    fldaP = fldaProjection(preDP,us[,1],us[,2],fl)
-    
-    
-    if(PLOTS){
-      png(filename= paste0(plotpath,"fldaPForDoublePositive",".png"))
-      h_fldaP  = hist(fldaP,200,main = paste0(CarName," LDA for finding the Double Positive points"),plot = T )
-    }else{
-      h_fldaP  = hist(fldaP,200,plot = F )
-    }  
-    d1 = dim(g1)[1]
-    d2 = dim(g2)[1]
-    p1 = d1/(d1+d2)
-    p2 = d2/(d1+d2)
-    vp = log(p2/p1)
-    
-    if(PLOTS){
-      abline(v = vp, col = 3, lwd = 2 , lty = 2)
-      
-    }
-    
-    ind = min(which(h_fldaP$mids > vp )):(length( h_fldaP$mids))
-    cutvalueUp =  min(max(h_fldaP$counts[ind])* 4e-2 + min(h_fldaP$counts[ind]),30)
-    upind  = min(which(h_fldaP$counts[ind] > cutvalueUp ) ) 
-    upind = ind[1] + upind
-    
-    if(PLOTS){
-      abline(v = h_fldaP$mids[upind],col =2 , lwd = 2 ,lty = 2 )
-    }
-    
-    ind = max(which(h_fldaP$mids < vp )) : 1
-    cutvalueUDown =  min(max(h_fldaP$counts[ind])* 4e-2 + min(h_fldaP$counts[ind]),30)
-    downind  = min(which(h_fldaP$counts[ind] > cutvalueUDown ) ) 
-    downind = ind[1] - downind
-    
-    if(PLOTS){
-      abline(v = h_fldaP$mids[downind],col =2 , lwd = 2 ,lty = 2 )
-      dev.off()
-    }
-    
-    filedatalCD3forProojection =  filedatalCD3[,c("Area4","Area3")]
-    
-    
-    fldapreDPCD3 = fldaProjection(filedatalCD3forProojection,us[,1],us[,2],fl)
-    
-    sel_DP  = !((h_fldaP$mids[downind] < fldapreDPCD3 ) & (h_fldaP$mids[upind] > fldapreDPCD3 ))
-    sel_DP = selpreDP & !sel_DP
-    
-    if(PLOTS){
-      
-      png(filename= paste0(plotpath,"DoublePositive_Area4_Area3",".png"))
-      le = dim(filedatalCD3)[1]
-      samp  = sample(1:le,min(le,2e4))
-      with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = c(0.2,0.6)[1  + sel_DP[samp]],col = colbr[1  + sel_DP[samp]  ],main = paste0(CarName," Select Double Positive") ))
-      dev.off()
-    }
-  }else{
-    sel_DP = rep(FALSE,dim(filedatalCD3)[1])
-  }
-
-}else{
-  sel_DP = rep(FALSE,dim(filedatalCD3)[1])
-}
-
-sum(( selcleanCD4))
 selcleanCD4_NoDP =  ( selcleanCD4 ) & ( !sel_DP )
 selcleanCD8_NoDP  = selType40r8 & (!sel_DP )
 
 selcleanCD4_NoDPnum = sum(selcleanCD4_NoDP)
 selcleanCD8_NoDPnum = sum(selcleanCD8_NoDP)
 
+
+#QC4!
+if(bAddmedianInformation){
+  
+  NumCD4 = sum(selcleanCD4_NoDP)
+  NumCD8 = sum(selcleanCD8_NoDP)
+  
+  
+  addata = data.frame( testNum = Cartnum,Type = "CD4" , size = dim(filedatalCD3[selcleanCD4_NoDP,])[1], t( apply(filedatalCD3[selcleanCD4_NoDP,c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
+  addata = data.frame( testNum = Cartnum,Type = "CD8" , size = dim(filedatalCD3[selcleanCD8_NoDP,])[1] ,  t( apply(filedatalCD3[selcleanCD8_NoDP,c(paste0("Area",1:8),"FCS")],2,median)) )
+  medianDat = rbind( medianDat , addata )
+  
+  QCResults = QcCheck("QC4",QCResults) 
+  
+  if(QCResults$ErrorNum != 0 ){
+    if ( USE_ACCEPTANCE_CRITERIA){
+      
+      return(errorH(UseValidationMode,QCResults$ErrorString , plotpath,QCResults ) )  
+    }
+  }
+  
+  
+  #QC8!
+  QCResults = QcCheck("QC8",QCResults) #c("QCNumberOf45","QC45","QC3","QCDraq7","QC4","QC8")
+  if(QCResults$ErrorNum != 0 ){
+    if ( USE_ACCEPTANCE_CRITERIA ){
+      return(errorH( UseValidationMode, QCResults$ErrorString , plotpath,QCResults ) )
+    }
+  }
+  
+}
+
+if(bAddmedianInformation){
+  
+  if(!dir.exists(plotpath)){
+    dir.create(plotpath)
+  }
+  medianDatpaath = paste0(plotpath,"medianDat.csv")
+  write.csv(medianDat,medianDatpaath,row.names = F)
+}
+
 if(PLOTS){graphics.off()}
 
-if(UseValidationMode == TRUE){
+#result
+if(UseValidationMode == TRUE)
+{
   
   Values = c(
     runInformation$DeviceNum,
@@ -2338,7 +2520,17 @@ if(UseValidationMode == TRUE){
     #100*round((selcleanCD4_NoDPnum - SumdoubleNegtoveBoundaryInd)/CD3Livenum,2),
     100*round(selcleanCD4_NoDPnum/CD3Livenum,3),
     100*round(selcleanCD8_NoDPnum/CD3Livenum,3),
-    round(selcleanCD4_NoDPnum/selcleanCD8_NoDPnum,2)) 
+    round(selcleanCD4_NoDPnum/selcleanCD8_NoDPnum,2),
+    0,#Error
+    0)#"Location Warning"
+  
+  
+  Values  = as.character( Values )
+  if( length(QCResults$QCarra) > 0 ){
+    WarningStringOut = paste0( QCResults$QCarra , collapse = ";")
+    Values[length(Values)] = WarningStringOut
+  }
+  
   
   Variable = c(
     "Device",
@@ -2357,147 +2549,81 @@ if(UseValidationMode == TRUE){
     #"CD4CD8Ratio",
     "CD4CD3Ratio",
     "CD8CD3Ratio",
-    "CD4CD8Ratio")
+    "CD4CD8Ratio",
+    "ErrorNum",
+    "WarningNums")
   
-  df = data.frame(Values,Variable)
-  
-  if(WRITE_RESUTLS){
-    
-    write.csv(df,paste0(plotpath,"ReadMe.txt"))
-    
-  }
-  
+  df = data.frame(Values,Variable,stringsAsFactors = F)
   df
   
-}else{  
+}
+else
+{  
   
-    Values = c(
-               #runInformation$DeviceNum,
-               Cartnum,
-               CD45num,
-               CD45Livenum, 
-               CD45deadnum,
-               CD3num,
-               CD3Livenum, 
-               CD3deadnum,
-               selcleanCD4_NoDPnum,
-               selcleanCD8_NoDPnum,
-               100*round(Cd45liveRatio,3),
-               100*round(Cd3liveRatio,3),
-               100*round(Cd3Cd45Ratio,3),
-               #100*round(CD4CD8Ratio,2),
-               #100*round((selcleanCD4_NoDPnum - SumdoubleNegtoveBoundaryInd)/CD3Livenum,2),
-               100*round(selcleanCD4_NoDPnum/CD3Livenum,3),
-               100*round(selcleanCD8_NoDPnum/CD3Livenum,3),
-               round(selcleanCD4_NoDPnum/selcleanCD8_NoDPnum,2)) 
-    
-    Variable = c(
-                 #"Device",
-                 "Cartrige",
-                 "CD45_total",
-                 "CD45_live",
-                 "CD45_dead",
-                 "CD3_total",
-                 "CD3_live",
-                 "CD3_dead",
-                 "CD4_live",
-                 "CD8_live",
-                 "Cd45liveRatio",
-                 "Cd3liveRatio",
-                 "Cd3Cd45Ratio",
-                 #"CD4CD8Ratio",
-                 "CD4CD3Ratio",
-                 "CD8CD3Ratio",
-                 "CD4CD8Ratio")
-    
-    
-    df = data.frame(Values,Variable)
-    
-    
-    if(WRITE_RESUTLS){
-      
-      write.csv(df,paste0(plotpath,"ReadMe.txt"))
-      
-    }
-    
-    paste0(df[,c("Values")],collapse = ",")
+  Values = c(
+    #runInformation$DeviceNum,
+    Cartnum,
+    CD45num,
+    CD45Livenum, 
+    CD45deadnum,
+    CD3num,
+    CD3Livenum, 
+    CD3deadnum,
+    selcleanCD4_NoDPnum,
+    selcleanCD8_NoDPnum,
+    100*round(Cd45liveRatio,3),
+    100*round(Cd3liveRatio,3),
+    100*round(Cd3Cd45Ratio,3),
+    #100*round(CD4CD8Ratio,2),
+    #100*round((selcleanCD4_NoDPnum - SumdoubleNegtoveBoundaryInd)/CD3Livenum,2),
+    100*round(selcleanCD4_NoDPnum/CD3Livenum,3),
+    100*round(selcleanCD8_NoDPnum/CD3Livenum,3),
+    round(selcleanCD4_NoDPnum/selcleanCD8_NoDPnum,2),
+    0,#NO Error
+    0)#Warning Location
+  
+  
+  Values  = as.character( Values )
+  if( length(QCResults$QCarra) > 0 ){
+    WarningStringOut = paste0( QCResults$QCarra , collapse = ";")
+    Values[length(Values)] = WarningStringOut
   }
+  
+  
+  
+  Variable = c(
+    #"Device",
+    "Cartrige",
+    "CD45_total",
+    "CD45_live",
+    "CD45_dead",
+    "CD3_total",
+    "CD3_live",
+    "CD3_dead",
+    "CD4_live",
+    "CD8_live",
+    "Cd45liveRatio",
+    "Cd3liveRatio",
+    "Cd3Cd45Ratio",
+    #"CD4CD8Ratio",
+    "CD4CD3Ratio",
+    "CD8CD3Ratio",
+    "CD4CD8Ratio",
+    "ErrorNum",
+    "WarningNums")
+  
+  
+  df = data.frame(Values,Variable,stringsAsFactors = F)
+  #write.csv(df,"C:/Project/LeukoDx/TCL/TCL_Results/luda/re288.csv")
+  
+  
+  #write.csv(df,"c:/Temp/Results283.csv")
+  
+  paste0(df[,c("Values")],collapse = ",")
+}
 
-
-#GENRAL   
-}else{
-  
-    if(UseValidationMode == TRUE) {
-    
-    Variable = c(
-      "Device",
-      "Cartrige",
-      "CD45_total",
-      "CD45_live",
-      "CD45_dead",
-      "CD3_total",
-      "CD3_live",
-      "CD3_dead",
-      "CD4_live",
-      "CD8_live",
-      "Cd45liveRatio",
-      "Cd3liveRatio",
-      "Cd3Cd45Ratio",
-      #"CD4CD8Ratio",
-      "CD4CD3Ratio",
-      "CD8CD3Ratio",
-      "CD4CD8Ratio")
-    
-    Values  = rep(0,length(Variable))
-    
-    df = data.frame(Values,Variable)
-    
-    if(WRITE_RESUTLS){
-      
-      write.csv(df,paste0(plotpath,"ReadMe.txt"))
-      
-    }
-    
-    df
-  }
-    else{
-        Variable = c(
-        #"Device",
-        "Cartrige",
-        "CD45_total",
-        "CD45_live",
-        "CD45_dead",
-        "CD3_total",
-        "CD3_live",
-        "CD3_dead",
-        "CD4_live",
-        "CD8_live",
-        "Cd45liveRatio",
-        "Cd3liveRatio",
-        "Cd3Cd45Ratio",
-        #"CD4CD8Ratio",
-        "CD4CD3Ratio",
-        "CD8CD3Ratio",
-        "CD4CD8Ratio") 
-      
-      Values  = rep(0,length(Variable))
-      
-      df = data.frame(Values,Variable)
-      
-      if(WRITE_RESUTLS){
-        
-        write.csv(df,paste0(plotpath,"ReadMe.txt"))
-        
-      }
-      
-      paste0(df[,c("Values")],collapse = ",")
-    
-    }
-  
-  }
 }
 
 #runEnv ----- 
-
-
-#runAlgo_shortData(args[1])
+main(files[1])
+#main(args[1])
