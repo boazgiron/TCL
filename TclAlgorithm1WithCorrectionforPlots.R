@@ -247,7 +247,7 @@ average2 <- function(x){
   buf
 }
 
-#source("tools.R")
+
 filter1 <- function(flitercoff,delay,x,y){
   out  = list(x = x[(delay+1):length(x)]  ,y = filter( flitercoff, y )[(delay+1):length(x)])
   out 
@@ -348,65 +348,7 @@ maxdetcetion <- function(sqin,maxpre,maxDiff,minpre,minDiff,plotFlag,xin,...){
 
 #oldErrorVersion
 errorH1 <- function(UseValidationMode1,ErrorString,plotpath1){}
-##-------------------------------------------- 
-#   if(UseValidationMode1 == TRUE) {
-#     
-#     Variable = c(
-#       "Device",
-#       "Cartrige",
-#       "CD45_total",
-#       "CD45_live",
-#       "CD45_dead",
-#       "CD3_total",
-#       "CD3_live",
-#       "CD3_dead",
-#       "CD4_live",
-#       "CD8_live",
-#       "Cd45liveRatio",
-#       "Cd3liveRatio",
-#       "Cd3Cd45Ratio",
-#       #"CD4CD8Ratio",
-#       "CD4CD3Ratio",
-#       "CD8CD3Ratio",
-#       "CD4CD8Ratio")
-#     
-#     Values  = rep(0,length(Variable))
-#   
-#     write(ErrorString,paste0(plotpath1,"ErrorText.txt"))  
-#     
-#     df = data.frame(Values,Variable)
-#     df
-#   }
-#   else{
-#     Variable = c(
-#       #"Device",
-#       "Cartrige",
-#       "CD45_total",
-#       "CD45_live",
-#       "CD45_dead",
-#       "CD3_total",
-#       "CD3_live",
-#       "CD3_dead",
-#       "CD4_live",
-#       "CD8_live",
-#       "Cd45liveRatio",
-#       "Cd3liveRatio",
-#       "Cd3Cd45Ratio",
-#       #"CD4CD8Ratio",
-#       "CD4CD3Ratio",
-#       "CD8CD3Ratio",
-#       "CD4CD8Ratio") 
-#     
-#     Values  = rep(0,length(Variable))
-#     
-#     df = data.frame(Values,Variable)
-#     
-#     paste0(df[,c("Values")],collapse = ",")
-#     
-#   }
-#   
-# }
-#--------------
+
 errorH <- function(UseValidationMode1,ErrorString,plotpath1,QcResultsV){
   
   if(UseValidationMode1 == TRUE) {
@@ -842,7 +784,42 @@ RemoveLowSumCH <- function(){
     
     hsumch = getDensity(sumCh,200,bf)
     plot(hsumch$x,hsumch$y,"l")
+    
+    
+   
+    
+    reu = NULL
+    alfa =  0.05
+    r = hsumch$y[1]
+    for( i in 1:length(hsumch$y) ){
+      r = alfa* hsumch$y[i]  + (1-alfa)*r  
+      reu = c(reu,r)
+      
+    }
+    
+    which(max(reu) == reu)
+    which(max(hsumch$y) == hsumch$y)
+    
+    
+    points(hsumch$x,reu,"l",col = 2)
+    
+    hsumch$y = reu
+    
     fmax_hsumch = maxiNu(hsumch$x,hsumch$y,PLOTS,plotpath,"sumCh1",TRUE,30,10)
+    
+    d = diff( fmax_hsumch$maxl$x ) / diff( range(fmax_hsumch$maxl$x) )
+    ch = which( d  < 0.2 )
+    
+    if( length(ch) > 0 ){
+      
+      for( i in ch ){
+        
+        
+        
+      }    
+      
+    }
+    
     dev.off()
     
   }
@@ -1759,7 +1736,7 @@ Cd45liveRatio = 0
 Cd3liveRatio = 0
 Cd3Cd45Ratio = 0  
 
-#wrkingFilepath = files[1]fl#filepath1
+#wrkingFilepath = files[4]fl#filepath1
 #Load file-----------------------
 
   filedata = read.csv(wrkingFilepath,header = T)
@@ -1809,7 +1786,7 @@ Cd3Cd45Ratio = 0
   
 #Sumch Detection--------------
   sel_sumCh = RemoveLowSumCH()
-  
+
   Num_sel_sumCh  = sum( sel_sumCh )
   
   if(  Num_sel_sumCh < sizeLimits[sizeLimits$Type == "NumberOf45","Value"] )  { 
@@ -1820,6 +1797,65 @@ Cd3Cd45Ratio = 0
   }
   
   filedatal = filedatals[sel_sumCh,]
+  
+  if(FALSE){
+    
+    dim(filedatal)
+    
+    plot(d$y)
+    d= density(filedatal$Area6)
+    
+    plot(d)
+    
+    h = with(filedatal,density(Area6))
+    ro = HighDensityGroup(h$y,100)
+    
+    plot(ro[,2])
+    
+    HighDensityGroup(h$count,10)
+    
+    with(filedatal,plot(Area6,Area1))
+    
+    k <- with(filedatal,MASS::kde2d(Area6,Area1, n=50))
+    h = hist(k$z,plot = F)
+    ind = which(max(h$counts) == h$counts)
+    q = 2*h$mids[ind]# + (h$mids[2]  + h$mids[1])/2
+    #q = quantile(k$z,0.99)
+    
+    k$z[k$z < q ] = 0
+    k$z[k$z != 0 ] = 3
+    kz = GetLabel(k$z)
+    le = length(k$x)
+    za = matrix(kz,1,)
+        
+    df = data.frame( x = rep(k$x,each  = le),y = rep(k$y,le), za = t(matrix(kz,1,)))
+      
+    head(df)  
+    
+    fn <- function(l){c(median(l$x),median(l$y))}    
+        
+        sp = split(df,list(za))
+        
+    rs = sapply(sp,fn)[,-1]
+              
+      
+      
+    
+    
+    
+str(za)    
+za1 = data.frame(za = t(za))
+unique(za1)
+
+
+
+    image(k$x,k$y,kz)
+    hist(kz)
+  }
+  
+  
+  
+  
   
   
   #Orignal Algorithm 100717DD---------------------

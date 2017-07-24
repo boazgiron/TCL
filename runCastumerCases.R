@@ -26,8 +26,9 @@ write.csv(fieldBur,"C:/Project/LeukoDx/LudaFacsValidation/fourCasesForValidation
 
 basename(files[3])
 
+AronFilespath = "L:/Personal/Boaz/T Cell Check/CID-417"
 
-AronFilespath = "L:/Personal/Boaz/TCL Data/Aron170717"
+#AronFilespath = "L:/Personal/Boaz/TCL Data/Aron170717"
 files = dir(AronFilespath,full.names = T)
 files = files[-3]
 files[-3]

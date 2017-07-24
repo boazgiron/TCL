@@ -3,11 +3,11 @@ x= c(rep(0,10),rep(17,10),rep(0,10),rep(15,10) )
 HighDensityGroup <- function(x,n){
   
   #x = d$y
-  #step1 = 1e-4
+  #n =100
   st = max(x)
   end = min(x)
-  st = ( min(x) - max(x) )/n
-  se = seq(st,end,st)
+  stp = ( min(x) - max(x) )/n
+  se = seq(st,end,stp)
   r = NULL
   for(s in se ){
     
