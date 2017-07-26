@@ -1,4 +1,4 @@
-#Ver5
+#Ver7
 #library(stringr)
 #library("mclust", lib.loc="~/R/win-library/3.2") 
 #library(ggplot2)
@@ -19,9 +19,9 @@ ty  = c(paste0("Area",1:8),"Peak9")
 bf <- butter(2, 0.2, type="low")
 bf4 <- butter(4, 0.2, type="low")
 args<-commandArgs(TRUE)
-PLOTS = FALSE
-PLOTS2 = FALSE
-UseValidationMode = FALSE
+PLOTS = TRUE
+PLOTS2 = TRUE
+UseValidationMode = TRUE
 WRITE_RESUTLS = FALSE
 LUDA = FALSE
 
@@ -30,9 +30,9 @@ LUDA = FALSE
 
 DEV.OFF <- function(){
   
-  if(FALSE){
+  if(TRUE){
     
-    def.off()
+    dev.off()
     
   }
   
@@ -596,7 +596,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     Cartnum = runInformation$Cartnum
     
     
-    plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1207/",Cartnum,"/")
+    plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Ver8/",Cartnum,"/")
     
     if(PLOTS){  
       if(!dir.exists(plotpath)){
@@ -616,7 +616,17 @@ runAlgo_shortData <- function(wrkingFilepath){
     
     filedata = filedata[widthb,]
     
+    #Sipm transfomation
+    
+    filedata[,ty[8]]  <- filedata[,ty[6]]/2 + filedata[,ty[7]]/2
+    filedata[,ty[7]]  <- filedata[,ty[6]] 
+    filedata[,ty[6]]  <- filedata[,ty[5]]
+    filedata[,ty[5]]  <- filedata[,ty[4]]
+    filedata[,ty[4]]  <- filedata[,ty[3]]
+    filedata[,ty[3]]  <- filedata[,ty[2]]
+    
     filedatals =  data.frame(apply(filedata[,ty[1:9]],2,log10))
+    
     filedatals$FCS <- filedata$Peak9
     filedatals$sumCh =  apply(filedatals[,1:8],1,sum)
     
@@ -870,7 +880,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     fr = filter1(bf,5,h_Area6_sel45$mids, h_Area6_sel45$counts)
     h_Area6_sel45$mids = fr$x
     h_Area6_sel45$counts = fr$y
-    fmax_h_Area6_sel45 = maxiNu(h_Area6_sel45$mids,h_Area6_sel45$counts,PLOTS,plotpath,"Cd3 h_Area6",TRUE,30,10)
+    fmax_h_Area6_sel45 = maxiNu(h_Area6_sel45$mids,h_Area6_sel45$counts,PLOTS,plotpath,"Cd3 h_Area6",FALSE,30,10)
     if(length(fmax_h_Area6_sel45$maxl) > 0 ){
       
       if( length(fmax_h_Area6_sel45$maxl$x) > 1 ){
@@ -2031,7 +2041,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         
         if(PLOTS){
           png(filename= paste0(plotpath,"fldaPForDoublePositive",".png"))
-          h_fldaP  = hist(fldaP,200,main = paste0(CarName," LDA for finding the Double Positive points"),plot = F )
+          h_fldaP  = hist(fldaP,200,main = paste0(CarName," LDA for finding the Double Positive points"),plot = T )
         }else{
           h_fldaP  = hist(fldaP,200,plot = F )
         }  
@@ -2042,6 +2052,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         vp = log(p2/p1)
         
         if(PLOTS){
+          
           abline(v = vp, col = 3, lwd = 2 , lty = 2)
           
         }
@@ -2313,7 +2324,9 @@ runAlgo_shortData <- function(wrkingFilepath){
     
   }
 }
-
+#fl = 'L:/Scientific/Raw Data/Reader_Data/Accellix 100/SiPM our board/Blood data/TCL/TCL CID-100009 sipm/20170725_11-22-57_AX100_TCL_L100_C100009_1-8-43 2nd day__294_SP_EDv38TCLv16_nofft.events.csv'
 #runEnv ----- 
-re = runAlgo_shortData(args[1])
-write.csv(re,"C:/Accellix/CheckResult.csv")
+runAlgo_shortData(fl)
+
+#re = runAlgo_shortData(args[1])
+#write.csv(re,"C:/Accellix/CheckResult.csv")

@@ -1,4 +1,4 @@
-#Ver5
+#Ver7
 #library(stringr)
 #library("mclust", lib.loc="~/R/win-library/3.2") 
 #library(ggplot2)
@@ -2315,5 +2315,7 @@ runAlgo_shortData <- function(wrkingFilepath){
 }
 
 #runEnv ----- 
-re = runAlgo_shortData(args[1])
-write.csv(re,"C:/Accellix/CheckResult.csv")
+runAlgo_shortData(args[1])
+
+#re = runAlgo_shortData(args[1])
+#write.csv(re,"C:/Accellix/CheckResult.csv")
