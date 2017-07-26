@@ -28,6 +28,16 @@ LUDA = FALSE
 
 #FUNCTIONS------------------
 
+DEV.OFF <- function(){
+  
+  if(FALSE){
+    
+    def.off()
+    
+  }
+  
+}
+
 GetLabel <- function(m){
   
   se = dim(m)
@@ -519,7 +529,7 @@ maxiNu = function(x,y,PLOTS1,plotpath,filename,DEVOFF,minmax ,filter_length  ){
     
     if( DEVOFF ){
       
-      dev.off()
+      DEV.OFF()
     }
     
   }else{
@@ -601,7 +611,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       png(filename= paste0(plotpath,"Width",".png"))
       hist(filedata$Width,500,xlim = c(0,30),xlab = "Width", main = as.character(CarName))
       abline(v = 4,col ="red",lwd = 2 )
-      dev.off()
+      DEV.OFF()
     }
     
     filedata = filedata[widthb,]
@@ -620,7 +630,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     hsumch$counts = fr$y
     fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
     if(length(fmax_hsumch$maxl) ==  0 ){
-      dev.off()
+      DEV.OFF()
       fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
     }
     
@@ -768,7 +778,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     if(PLOTS) {
       
       abline(v = bondaryv1 , col = 2 ,lty = 2 ,lwd =2)
-      dev.off()
+      DEV.OFF()
     }
     
     sel_sumCh = sumCh > bondaryv1
@@ -789,7 +799,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                   col = colbr[1+ sel_sumCh[samp]],
                                   ylim = c(0,5),
                                   main = paste0("SumCh_Area7 boundary bondaryv1 ", CarName)))
-      dev.off()
+      DEV.OFF()
     }
     
     #Orignal Algorithm 100717DD---------------------
@@ -838,7 +848,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                  #ylim = c(0,5) ,
                                  main = paste0("Area1_FCS ", CarName)))
       points(c(x1,x2),c(y1,y2),pch  = 19,cex = 2,col = 5) 
-      dev.off()
+      DEV.OFF()
     }
     
     
@@ -876,7 +886,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     if(PLOTS) {
       
       abline(v = bounadry_h_Area1_fcs , col = 2 ,lty = 2 ,lwd =2)
-      dev.off()
+      DEV.OFF()
     }
     
     
@@ -894,7 +904,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                        col = colbr[1 + sel6_[samp]] ,
                                        #ylim = c(0,5) ,
                                        main = paste0("CD3 Area6_Area1 ", CarName)) )
-      dev.off()
+      DEV.OFF()
     } 
     
     
@@ -913,7 +923,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       if(PLOTS){
         xcut = cutmax - sd(FCS_Area1[FCS_Area1 > cutmax])
         abline(v = xcut)
-        dev.off()
+        DEV.OFF()
       }
       
       
@@ -985,7 +995,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         png(filename= paste0(plotpath,"Check FCS_Area1",".png"))
         plot(xcut+se,bu)
         abline(v  =  xcut)
-        dev.off()
+        DEV.OFF()
       }
       
       
@@ -998,7 +1008,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         with(filedatal[sel45Hirsh,],points(Area6,Area1,pch  =19,cex =0.2,col = 2))
         abline(v = cut6)
         abline(h = cut1)
-        dev.off()
+        DEV.OFF()
       }
       
       if(PLOTS) {
@@ -1012,7 +1022,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                    #xlim = c(0,20),ylim = c(1,5),
                                    main = paste0("FCS vs Area1 Angle = ", slop ,"  ", CarName)))
         #abline(c(0,3/20))
-        dev.off()
+        DEV.OFF()
       }
       
       sel6Hirsh = filedatal$Area6 > cut6
@@ -1029,7 +1039,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                          #xlim = c(0,20),ylim = c(1,5),
                                          main = paste0("CD3 selection")))
         #abline(c(0,3/20))
-        dev.off()
+        DEV.OFF()
       }
       
       
@@ -1075,7 +1085,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       if(PLOTS) {
         
         abline(v = xre,col = 2,lwd = 2, lty = 2) 
-        dev.off()
+        DEV.OFF()
       }  
       
       if( ( xre < re[1] ) | ( xre > re[2] ) )  {
@@ -1114,7 +1124,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       if(PLOTS) {
         
         abline(v = cut6)
-        dev.off()
+        DEV.OFF()
       }  
       
       seq1 = seq(-1.0,1.0,0.1)
@@ -1148,7 +1158,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         abline(m1)
         abline(m2)
         abline(v = xre,col = 2, lwd = 2 ,lty = 2 )
-        dev.off()
+        DEV.OFF()
         
       }
       
@@ -1171,7 +1181,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         abline(v = cut6,col = 2,lwd =2 ,lty  = 2 )
         abline(h = cut6_1,col = 1,lwd =2 ,lty  = 2 )
         
-        dev.off()
+        DEV.OFF()
       }
       
       
@@ -1186,7 +1196,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                    #xlim = c(0,20),ylim = c(1,5),
                                    main = paste0("FCS vs Area1 Angle = ", slop ,"  ", CarName)))
         #abline(c(0,3/20))
-        dev.off()
+        DEV.OFF()
       }
       
       #------------------------------------
@@ -1222,7 +1232,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                    xlim = c(0,20),ylim = c(1,5),
                                    main = paste0("Area7 vs Area1 Angle = ", round(x2,2) ,"  ", CarName)))
         #abline(c(0,3/20))
-        dev.off()
+        DEV.OFF()
       }
       
       
@@ -1237,7 +1247,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       #                            xlim = c(0,20),ylim = c(1,5),
       #                            main = paste0("FCS vs Area1 Angle = ", round(x2,2) ,"  ", CarName)))
       #   #abline(c(0,3/20))
-      #   dev.off()
+      #   DEV.OFF()
       # }
       # 
       # 
@@ -1328,7 +1338,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       if(PLOTS) {
         
         abline(v = cutLowArea1,col = 2 ,lty = 2, lwd =2)
-        dev.off()
+        DEV.OFF()
       }
       
       filedatal45pl = filedatal[selArea1,]
@@ -1339,7 +1349,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         le = dim(filedatal)[1]
         samp  = sample(1:le,min(le,2e4))
         with(filedatal[samp,],plot(Area1,FCS,pch =19 ,cex = 0.2 ,col = colbr[1 + selArea1[samp]] ))
-        dev.off()
+        DEV.OFF()
       }
       
     }
@@ -1403,7 +1413,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     
     if(PLOTS){
       abline(v = h_lm68hpmiddsleMin,col  = 3,lwd = 2,lty =2)
-      dev.off()
+      DEV.OFF()
     }
     
     vpArea6Area8 =  cbind( filedatal$Area6,filedatal$Area8 ) %*% (vp)
@@ -1421,7 +1431,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                  col = colbr[1+selpredead[samp,]]))
       
       abline(lm68,col = "blue",lwd = 2)
-      dev.off()
+      DEV.OFF()
     }
     
     #Cut tail select up Area6 and Are8-------------------------- 
@@ -1459,7 +1469,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     
     if( length(h_lm68hv_max$maxl) == 0 ){
       
-      dev.off()
+      DEV.OFF()
       h_lm68hv_max = maxiNu(h_lm68hv$mids,h_lm68hv$counts,PLOTS,plotpath,"h_lm68hv Detect Deads second",FALSE,20,10)
       
     }
@@ -1489,7 +1499,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     if(PLOTS){
       
       abline(v = seldeadv ,col = 2,lwd = 2,lty = 2)
-      dev.off()
+      DEV.OFF()
     }
     
     
@@ -1517,7 +1527,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       
       legend("topleft",c("live","Dead"),col = c(1,2),pch=19 )
       #abline(lm68live,col  = 5, lwd = 2 )
-      dev.off()
+      DEV.OFF()
       
     }
     
@@ -1565,7 +1575,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       
       if(PLOTS){
         abline(v = CD3selectionBoundary, col = 3, lwd = 2,lty = 2 )
-        dev.off()
+        DEV.OFF()
         
         png(filename= paste0(plotpath,"CD3 Detection",".png"))
         le = dim(filedatal45pl)[1]
@@ -1579,7 +1589,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         
         abline(v = CD3selectionBoundary, col = 3, lwd = 2 ,lty = 2)
         legend("topleft",c("~CD3","CD3"),col = c(1,2),pch=19 )
-        dev.off()
+        DEV.OFF()
       }
       
       selCD3 = filedatal45pl$Area6 > CD3selectionBoundary
@@ -1633,7 +1643,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     if(PLOTS){  
       
       abline(lm34,col = 3,lwd = 2)
-      dev.off()
+      DEV.OFF()
       
     }
     
@@ -1661,7 +1671,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     h_lm68hv_max = maxiNu(h_vps34$mids,h_vps34$counts,PLOTS,plotpath,"h_vps34 Cut Tail",FALSE,30,10)
     if( length(h_lm68hv_max$maxl) == 0 ){
       
-      dev.off()
+      DEV.OFF()
       h_lm68hv_max = maxiNu(h_vps34$mids,h_vps34$counts,PLOTS,plotpath,"maxNe_h_vps34",FALSE,20,10)
     }
     
@@ -1693,7 +1703,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       
       if( PLOTS){
         abline(v = cutpoint,col = 1,lwd = 2,lty = 2 )
-        dev.off()
+        DEV.OFF()
       }
     }else{
       
@@ -1702,7 +1712,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         
         abline(v = cutpoint,col = 1,lwd = 2,lty = 2 )
         
-        dev.off()
+        DEV.OFF()
       }
       
     }  
@@ -1740,7 +1750,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       if(PLOTS){
         png(filename= paste0(plotpath,"CD3_Selection CD4_CD8 USE Ratio",".png"))
         with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+!selType40r8[samp]],main = paste0(CarName," CD3_Selection CD4_CD8 USE Ratio")))
-        dev.off()  
+        DEV.OFF()  
       }
       
       bUseRatio = TRUE
@@ -1858,7 +1868,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       if(PLOTS){
         
         abline(v = minbtween, col = 3, lwd = 2 ,lty = 2)
-        dev.off()
+        DEV.OFF()
         
       }
       
@@ -1874,7 +1884,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         
         png(filename= paste0(plotpath,"CD3_Selection CD4_CD8",".png"))
         with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+!selType40r8[samp]],main = paste0(CarName," First Cut for CD4 and CD8")))
-        dev.off()  
+        DEV.OFF()  
       }
       
     }
@@ -1949,7 +1959,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       
       if(PLOTS){
         abline(v = doubleNegtoveBoundary, col = 2 , lwd =2 , lty = 2 )
-        dev.off()
+        DEV.OFF()
       }
       
       sel_doubleNegtoveBoundary  = vvslmonly4 > doubleNegtoveBoundary
@@ -1963,7 +1973,7 @@ runAlgo_shortData <- function(wrkingFilepath){
                                             pch = 19, cex = 0.2,col = colbr[2- !sel_doubleNegtoveBoundary[samp]],
                                             main = paste0( CarName , " Select Double Negative ",CarName)))
         legend("topleft",c("CD4","DN"),col = c(1,2),pch=19 )
-        dev.off()
+        DEV.OFF()
       }
       
       
@@ -1995,7 +2005,7 @@ runAlgo_shortData <- function(wrkingFilepath){
       
       with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = 0.2,col = colbr[1+(selpreDP + 2*selType40r8 )[samp]],main = paste0(CarName," Pre Double Positive ") ))
       legend("topleft",c("CD4DN","CD4","LoWCD8","CD8"),col = c(1,2,3,4),pch=19 )
-      dev.off()
+      DEV.OFF()
     }
     
     if( !bOnlyOneType48 )
@@ -2052,7 +2062,7 @@ runAlgo_shortData <- function(wrkingFilepath){
         
         if(PLOTS){
           abline(v = h_fldaP$mids[downind],col =2 , lwd = 2 ,lty = 2 )
-          dev.off()
+          DEV.OFF()
         }
         
         filedatalCD3forProojection =  filedatalCD3[,c("Area4","Area3")]
@@ -2069,7 +2079,7 @@ runAlgo_shortData <- function(wrkingFilepath){
           le = dim(filedatalCD3)[1]
           samp  = sample(1:le,min(le,2e4))
           with(filedatalCD3[samp,], plot(Area4,Area3,pch = 19, cex = c(0.2,0.6)[1  + sel_DP[samp]],col = colbr[1  + sel_DP[samp]  ],main = paste0(CarName," Select Double Positive") ))
-          dev.off()
+          DEV.OFF()
         }
       }else{
         sel_DP = rep(FALSE,dim(filedatalCD3)[1])
