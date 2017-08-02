@@ -157,7 +157,6 @@ geG <- function(inputA,v1,v2,fscale){
 }
 
 
-
 GetLabel <- function(m){
   
   se = dim(m)

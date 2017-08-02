@@ -76,6 +76,17 @@ ClustringBylevel <- function(x,s){
 }  
 
 
+changeDerivations(df,r){
+  
+  sel = diff(r) != 0  
+  x = df$x
+  ra = diff(range(x))
+  y  = ra*(df$y)/diff(range(df$y))
+  plot(x,y)
+  y(r+1) - 
+  
+}
+
 
 upfromMin <- function(x,vl,n ,stNumOfGroup){
   
@@ -151,6 +162,12 @@ df = read.csv("C:/Project/LeukoDx/R/TCL/h_vpArea6Area8_Example.csv")
 plot(df$x,df$y,"l")
 ro = HighDensityGroup(df$y,100)
 
+
+plot(ro[,2],ro[,1])
+
+
+
+
 rol  = ro[,3:dim(ro)[2]]
 
 for(i in 1:dim(rol)[1]){
@@ -191,6 +208,7 @@ vl = min(ro[ro[,2] == 2,1])
 points(df$x,max(df$y)*ClustringBylevel(df$y,vl)/2,pch = 19,type = "l",col =2)
 vlu =  upfromMin(df$y,vl,20,2)
 points(df$x,max(df$y)*ClustringBylevel(df$y,vlu)/2.1,pch = 19,type = "l",col =2)
+points(df$x,max(df$y)*ClustringBylevel(df$y,(vl+vlu)/2)/2.1,pch = 19,type = "l",col =3)
 
 #plot(ClustringBylevel(df$y,vl))
 

@@ -25,8 +25,9 @@ write.csv(fieldBur,"C:/Project/LeukoDx/LudaFacsValidation/fourCasesForValidation
 
 
 basename(files[3])
+AronFilespath =  "L:/Personal/Boaz/T Cell Check/TCL CID-100012"
+#AronFilespath = "L:/Personal/Boaz/T Cell Check/CID-417"
 
-AronFilespath = "L:/Personal/Boaz/T Cell Check/CID-417"
 
 #AronFilespath = "L:/Personal/Boaz/TCL Data/Aron170717"
 files = dir(AronFilespath,full.names = T)
@@ -51,5 +52,8 @@ fieldBu1 <- data.frame(fieldBu1)
 fieldBu1$FILENAME <- FILENAME
 write.csv(fieldBu1,"C:/Project/LeukoDx/LudaFacsValidation/Aron8cases170717.csv")
 
-re  = runAlgo_shortData(files[1])
+fl = "L:/Personal/Boaz/T Cell Check/run/20170724_13-39-16_AX017_TCL_L003_C420_3_650_SP_EDv38TCLv16_nofft.events.csv"
+fl = "L:/Personal/Boaz/T Cell Check/New folder/20170724_16-06-59_AX017_TCL_L003_C417_PBMC 1-8-43_650_SP_EDv38TCLv16_nofft.events.csv"
+
+re  = main(fl)
 
