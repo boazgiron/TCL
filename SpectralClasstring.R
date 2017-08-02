@@ -4,6 +4,8 @@ library("e1071")
 #data(spirals)
 #write.csv(filedatals,"C:/Temp/filedatals.csv")
 filedatals  = read.csv("C:/Temp/filedatals.csv",header = T,stringsAsFactors = F)
+filedatalsSample = filedatals[sample(nrow(filedatals),2e4),]
+write.csv(filedatalsSample,"C:/Project/LeukoDx/R/TCL/filedatals.csv")
 
 bu1 = NULL
 bu2 = NULL
@@ -46,13 +48,13 @@ plot(sp, col=sc,pch = 19)
 filedatalsSample = filedatals[sample(nrow(filedatals),5e2),]
 #sp = scale(cbind(filedatalsSample$sumCh,filedatalsSample$Area7))
 sp = (cbind(filedatalsSample$sumCh,filedatalsSample$Area7))
-sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 0.4), centers=2)
+sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 1), centers=2)
 df = data.frame(sp,cl = factor(sc@.Data))
+colnames(df)[1:2] <- c("Area7","sumCh") 
 
 svm_model <- svm(cl ~ ., data=df)
 summary(svm_model)
 plot(svm_model,data=df)
-
 
 
 filedatalsSample = filedatals[sample(nrow(filedatals),1e2),]
@@ -105,33 +107,15 @@ plot(filedatalsSample$sumCh,filedatalsSample$FCS,col = cl,pch = 19 ,cex =0.2)
 
 getsumCH <-function(){
   
-  filedatals$sumCh[!is.finite(filedatals$sumCh)] <- NA
-  filedatalsSample = filedatals[sample(nrow(filedatals),2e4),]
-  sp = (cbind(filedatals$sumCh,filedatals$FCS))
-  dfa = data.frame(sp)
+  
+  
 
-  
-subformcol <-function(df,v){
-  
-  for(i in 1:dim(df)[2]){
-   
-    df[,i] <- df[,i] + v[i] 
-  }
-  
-  df
-  
-}
 
-divformcol <-function(df,v){
-  
-  for(i in 1:dim(df)[2]){
-    
-    df[,i] <- df[,i]/v[i] 
-  }
-  
-  df
-  
-}
+filedatals$sumCh[!is.finite(filedatals$sumCh)] <- NA
+filedatalsSample = filedatals[sample(nrow(filedatals),2e4),]
+sp1 = (cbind(filedatals$sumCh,filedatals$FCS))
+dfa = data.frame(sp1)
+
   
 cla = NULL
 st = Sys.time()
@@ -139,16 +123,19 @@ for(i in 1:5){
   
   filedatalsSample = filedatals[sample(nrow(filedatals),1e3),]
   df = cbind(filedatalsSample$sumCh,filedatalsSample$FCS)
-  sp = scale(df)
   mes = colMeans(df)
   mds = apply(df,2,sd)
+  sp = scale(df)
   
   dff = subformcol(dfa,mes)
-  dff = subformcol(dff,mds)
+  dff = divformcol(dff,mds)
   sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 0.4), centers = 2 )
   df = data.frame(sp,cl = factor(sc@.Data))
+  
+  
   svm_model <- svm(cl ~ ., data = df)
-  df = data.frame(sp)
+  plot(svm_model,data=df)
+  
   pre = predict(svm_model,df)
   me = with(df,aggregate(X1,list(pre),mean))[,2]
   men = which(max(me) == me)
@@ -160,6 +147,8 @@ for(i in 1:5){
   
 }
 
+head(dff)
+
 dt = Sys.time() - st
 dt
 
@@ -168,3 +157,139 @@ cl  = ifelse(sapply(cla,mean) > 1.5,2,1)
 plot(dfa$X1,dfa$X2,col = cla[2,],pch = 19 ,cex = 0.3,ylim = c(-1,7))
 
 plot(dff$X1,dff$X2,col = pre,pch = 19 ,cex = 0.3 )
+
+plot(df[,1:2],col = df$cl)
+
+#020817DD---------------------------------------
+
+subformcol <-function(df,v){
+  
+  ou = df
+  
+  for(i in 1:dim(df)[2]){
+    
+    ou[,i] <- ou[,i] - v[i] 
+  }
+  
+  ou
+  
+}
+
+divformcol <-function(df,v){
+
+  ou = df
+
+  for(i in 1:dim(df)[2]){
+    
+    ou[,i] <- ou[,i]/v[i] 
+  }
+  
+  ou
+  
+}
+
+
+
+## Cluster the spirals data set.
+library("kernlab", lib.loc="~/R/win-library/3.2")
+library("e1071")
+#data(spirals)
+#write.csv(filedatals,"C:/Temp/filedatals.csv")
+filedatals  = read.csv("C:/Temp/filedatals.csv",header = T,stringsAsFactors = F)
+
+filedatals$sumCh[!is.finite(filedatals$sumCh)] <- NA
+filedatalsSample = filedatals[sample(nrow(filedatals),5e4),]
+
+
+#sp1 = (cbind(filedatals$sumCh,filedatals$FCS))
+#dfa = data.frame(sp1)
+
+
+cla = NULL
+st = Sys.time()
+
+geG <- function(){
+
+
+  filedatalsSample = filedatals[sample(nrow(filedatals),1e3),]
+  df = cbind(filedatalsSample$sumCh,filedatalsSample$FCS)
+  mes = colMeans(df,na.rm = T)
+  mds = apply(df,2,sd,na.rm = T)
+  sp = scale(df)
+
+  sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 0.4), centers = 2 )
+  df = data.frame(sp,cl = factor(sc@.Data))
+  #with(df,plot(X1,X2,col = cl,pch = 19 ,cex = 0.3,ylim = c(-1,7)))
+  svm_model <- svm(cl ~ ., data = df)# ,probability = TRUE)
+  sp1 = (cbind(filedatals$sumCh,filedatals$FCS))
+  dfa = data.frame(sp1)
+  dff = subformcol(dfa,mes)
+  dff = divformcol(dff,mds)
+  dff = dff[complete.cases(dff),]
+  pre = predict(svm_model,dff)#,probability = TRUE)
+  
+  g1xx = mean(dff[pre == 1,1])
+  g1yy = mean(dff[pre == 1,2])
+  
+  g2xx = mean(dff[pre == 2,1])
+  g2yy = mean(dff[pre == 2,2])
+  
+  
+  # p = attr(pre, "probabilities")
+  # 
+  # 
+  # selg2 = pre == 2
+  # selg1 = pre == 1
+  # 
+  # g1x = sum(p[selg1,1] * dff[selg1,1])/sum(p[selg1,1])
+  # g1y = sum(p[selg1,2] * dff[selg1,2])/sum(p[selg1,2])
+  # 
+  # g2x = sum(p[selg2,1] * dff[selg2,1])/sum(p[selg2,1])
+  # g2y = sum(p[selg2,2] * dff[selg2,2])/sum(p[selg2,2])
+  # 
+  # points(c(g1x,g2x),c(g1y,g2y),pch = 19 ,cex =3 ,col =3)
+  # points(c(g1xx,g2xx),c(g1yy,g2yy),pch = 19 ,cex =5 ,col = 3 )
+  # 
+  
+  if(g1xx > g2xx ){
+    pre = ifelse(pre == 1,2,1)
+  }
+  
+  if(PLOTS){
+    
+    png(filename= paste0(plotpath,sumCH_SVM,".png"))
+    plot(dff,col = pre,pch = 19 ,cex = 0.3,ylim = c(-1,10))
+    dev.off()
+  }
+      
+  pre
+  
+}  
+#dff[which(diff(as.numeric(names(pre)))>1)+1,]
+
+str(pre)
+
+dt = Sys.time() - st
+dt
+
+#colnames(dfa)[1:2] <- c("sumCH","FCS")
+
+
+
+# pre = predict(svm_model,df)
+# me = with(df,aggregate(X1,list(pre),mean))[,2]
+# men = which(max(me) == me)
+# if( men ==  2){
+#   pre = predict(svm_model,dff)  
+#   pre = ifelse(pre == 1,2,1)  
+# }
+# cla = rbind(cla,pre)
+  
+
+cl  = ifelse(sapply(cla,mean) > 1.5,2,1)
+
+plot(dfa$X1,dfa$X2,col = cla[2,],pch = 19 ,cex = 0.3,ylim = c(-1,7))
+
+plot(dff$X1,dff$X2,col = pre,pch = 19 ,cex = 0.3 )
+
+

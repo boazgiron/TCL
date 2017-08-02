@@ -13,6 +13,11 @@
 #Variable----------------
 
 require(signal)
+#Addition
+
+library("kernlab", lib.loc="~/R/win-library/3.2")
+library("e1071")
+
 col  = topo.colors(255)
 colbr = c("black","red","green","blue")
 ty  = c(paste0("Area",1:8),"Peak9")
@@ -34,6 +39,124 @@ QCResults = list(ErrorNum = 0,QCarra = NULL, ErrorString = NULL )
 
 
 #FUNCTIONS------------------
+#new020817
+
+subformcol <-function(df,v){
+  
+  ou = df
+  
+  for(i in 1:dim(df)[2]){
+    
+    ou[,i] <- ou[,i] - v[i] 
+  }
+  
+  ou
+  
+}
+
+divformcol <-function(df,v){
+  
+  ou = df
+  
+  for(i in 1:dim(df)[2]){
+    
+    ou[,i] <- ou[,i]/v[i] 
+  }
+  
+  ou
+  
+}
+
+
+geG <- function(inputA,v1,v2,fscale){
+  
+  
+  #inputA = filedatal_sel45
+  #v1 = "Area6"
+  #v2 = "Area1"
+  #fscale = FALSE
+  
+  filedatalsSample = inputA[sample(nrow(inputA),1e3),]
+  df = cbind(filedatalsSample[,v1],filedatalsSample[,v2])
+  mes = colMeans(df,na.rm = T)
+  mds = apply(df,2,sd,na.rm = T)
+  if(fscale){
+    sp = scale(df)
+  }else{
+    sp = df
+  }
+
+  sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 0.4), centers = 2 )
+  df = data.frame(sp,cl = factor(sc@.Data))
+  #with(df,plot(X1,X2,col = cl,pch = 19 ,cex = 0.3,ylim = c(-1,7)))
+  svm_model <- svm(cl ~ ., data = df)# ,probability = TRUE)
+  sp1 = (cbind(inputA[,v1],inputA[,v2]))
+  dfa = data.frame(sp1)
+  if(fscale){
+    
+    dff = subformcol(dfa,mes)
+    dff = divformcol(dff,mds)
+  }else{
+    
+    dff = dfa
+  }
+  
+  dff[is.infinite(dff[,1]),1] = NA
+  dff[is.infinite(dff[,2]),2] = NA
+  dff = dff[complete.cases(dff),]
+  pre = predict(svm_model,dff)#,probability = TRUE)
+  
+  #sp1[is.infinite(sp1[,1]),1] = NA
+  #sp1 = sp1[complete.cases(sp1),]
+  
+  if(fscale){
+    
+    dff = divformcol(dff,1/mds)
+    dff = subformcol(dff,-mes)
+  }
+  
+  g1x = mean(dff[pre == 1,1])# + mes[1] 
+  g1y = mean(dff[pre == 1,2])# + mes[2] 
+  
+  g2x = mean(dff[pre == 2,1])# + mes[1] 
+  g2y = mean(dff[pre == 2,2])# + mes[2] 
+  
+  
+  # p = attr(pre, "probabilities")
+  # 
+  # 
+  # selg2 = pre == 2
+  # selg1 = pre == 1
+  # 
+  # g1x = sum(p[selg1,1] * dff[selg1,1])/sum(p[selg1,1])
+  # g1y = sum(p[selg1,2] * dff[selg1,2])/sum(p[selg1,2])
+  # 
+  # g2x = sum(p[selg2,1] * dff[selg2,1])/sum(p[selg2,1])
+  # g2y = sum(p[selg2,2] * dff[selg2,2])/sum(p[selg2,2])
+  # 
+  # points(c(g1x,g2x),c(g1y,g2y),pch = 19 ,cex =3 ,col =3)
+  # points(c(g1xx,g2xx),c(g1yy,g2yy),pch = 19 ,cex =5 ,col = 3 )
+  # 
+  
+  if(g1x > g2x ){
+    
+    pre = ifelse(pre == 1,2,1)
+    
+  }
+  
+  if(PLOTS){
+    
+    png(filename= paste0(plotpath,v1,"_",v2,"_SVM.png"))
+    plot(dff,col = pre,pch = 19 ,cex = 0.3)
+    points(c(g1x,g2x),c(g1y,g2y),col = 3, cex = 2,pch = 19)
+    dev.off()
+  }
+  
+  pre
+  
+}
+
+
 
 GetLabel <- function(m){
   
@@ -1736,7 +1859,7 @@ Cd45liveRatio = 0
 Cd3liveRatio = 0
 Cd3Cd45Ratio = 0  
 
-#wrkingFilepath = files[4]fl#filepath1
+#wrkingFilepath = fl#filepath1
 #Load file-----------------------
 
   filedata = read.csv(wrkingFilepath,header = T)
@@ -1785,7 +1908,9 @@ Cd3Cd45Ratio = 0
   filedatals$sumCh =  apply(filedatals[,1:8],1,sum)
   
 #Sumch Detection--------------
-  sel_sumCh = RemoveLowSumCH()
+  #sel_sumCh = RemoveLowSumCH()
+  
+  sel_sumCh = geG(filedatals,"sumCh","FCS",TRUE) == 2
 
   Num_sel_sumCh  = sum( sel_sumCh )
   
@@ -1853,16 +1978,17 @@ unique(za1)
     hist(kz)
   }
   
-  
-  
-  
-  
-  
   #Orignal Algorithm 100717DD---------------------
-  sel45 =  Sel45f()
+  #sel45 =  Sel45f()
+  sel45   = geG(filedatal,"Area1","Peak9",FALSE) == 2
+  
   filedatal_sel45 = filedatal[sel45,]
-  sel6   = Sel6f()
-
+  #sel6   = Sel6f()
+  sel6   = geG(filedatal_sel45,"Area6","Area1",FALSE) == 2
+  
+  #selpreDead   = geG(filedatal_sel45,"Area6","Area8",FALSE) == 2
+  #selDead   = geG(filedatal_sel45[selpreDead,],"Area6","Area8",FALSE) == 2
+  
 #Hirsh and Luda Code    
 if(FALSE){
   
@@ -2652,7 +2778,6 @@ else
   df = data.frame(Values,Variable,stringsAsFactors = F)
   #write.csv(df,"C:/Project/LeukoDx/TCL/TCL_Results/luda/re288.csv")
   
-  
   #write.csv(df,"c:/Temp/Results283.csv")
   
   paste0(df[,c("Values")],collapse = ",")
@@ -2661,5 +2786,5 @@ else
 }
 
 #runEnv ----- 
-main(files[1])
+#main(files[1])
 #main(args[1])
