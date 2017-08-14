@@ -57,3 +57,6 @@ fl = "L:/Personal/Boaz/T Cell Check/New folder/20170724_16-06-59_AX017_TCL_L003_
 
 re  = main(fl)
 
+rfilename = "20160904_13-06-59_AX017_TCL_L002_C103_170_D0_CD4_NEG_10M_650_EDv37GEv13_nofft.events.csv"
+rdirname = "L:/Scientific/Raw Data/Reader_Data/TCL Validation/accellix17/"
+fl = paste0(rdirname,rfilename)

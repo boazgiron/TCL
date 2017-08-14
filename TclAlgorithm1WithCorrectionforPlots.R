@@ -67,53 +67,90 @@ divformcol <-function(df,v){
   
 }
 
-
-geG <- function(inputA,v1,v2,fscale){
+geG <- function(inputA,cnames,fscale,plotpath1,v){
   
-  
+  #inputA = filedatals
+  #cnames = c("Area1", "FCS" ,"sumCh")
+  #fscale = T
   #inputA = filedatal_sel45
   #v1 = "Area6"
   #v2 = "Area1"
   #fscale = FALSE
+  df  = inputA[,cnames] 
+  dff  = df
   
-  filedatalsSample = inputA[sample(nrow(inputA),1e3),]
-  df = cbind(filedatalsSample[,v1],filedatalsSample[,v2])
-  mes = colMeans(df,na.rm = T)
-  mds = apply(df,2,sd,na.rm = T)
-  if(fscale){
-    sp = scale(df)
-  }else{
-    sp = df
+  for( i in 1:length(cnames)){
+    
+    df[is.infinite(df[,i]),i] = NA
   }
+  
+  sel4 = complete.cases(df)
+  df = df[sel4,]
+  dff = dff[sel4,]
+  
+  
+  if(fscale){
+    df = scale(df)
+  }
+  
+  if(!is.null(v)){
+    
+    for(i in 1:dim(df)[2]){
+          
+      df[,i] <- df[,i]/v[i]
+    }
+    
+  }
+  
+  # for(fsc in fscale){
+  #   i= 0 
+  #   if(fsc){
+  #     i=i+1
+  #     df[,i] <-  scale(df[,i])
+  #   }  
+    
 
-  sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 0.4), centers = 2 )
-  df = data.frame(sp,cl = factor(sc@.Data))
-  #with(df,plot(X1,X2,col = cl,pch = 19 ,cex = 0.3,ylim = c(-1,7)))
-  svm_model <- svm(cl ~ ., data = df)# ,probability = TRUE)
-  sp1 = (cbind(inputA[,v1],inputA[,v2]))
-  dfa = data.frame(sp1)
-  if(fscale){
-    
-    dff = subformcol(dfa,mes)
-    dff = divformcol(dff,mds)
-  }else{
-    
-    dff = dfa
-  }
+  #filedatalsSample = inputA[sample(nrow(inputA),1e3),]
+  #df = cbind(filedatalsSample[,v1],filedatalsSample[,v2])
+  #mes = colMeans(df,na.rm = T)
+  #mds = apply(df,2,sd,na.rm = T)
+  # if(fscale){
+  #   sp = scale(df)
+  # }else{
+  #   sp = df
+  # }
   
-  dff[is.infinite(dff[,1]),1] = NA
-  dff[is.infinite(dff[,2]),2] = NA
-  dff = dff[complete.cases(dff),]
-  pre = predict(svm_model,dff)#,probability = TRUE)
+  ssize = min(nrow(df),1e3)
+  sp = df[sample(nrow(df),ssize),]
+  sc <- specc(sp,kernel = "laplacedot",kpar = list(sigma= 0.4), centers = 2 )
+  #sc <- specc(sp,kernel = "tanhdot",kpar = list(sigma= 0.4), centers = 2 )
+  dfr = data.frame(sp,cl = factor(sc@.Data))
+  #with(df,plot(X1,X2,col = cl,pch = 19 ,cex = 0.3,ylim = c(-1,7)))
+  svm_model <- svm(cl ~ ., data = dfr)# ,probability = TRUE)
+  
+  #sp1 = (cbind(inputA[,v1],inputA[,v2]))
+  #df = data.frame(df)
+  # if(fscale){
+  #   
+  #   dff = subformcol(dfa,mes)
+  #   dff = divformcol(dff,mds)
+  # }else{
+  #   
+  #   dff = dfa
+  # }
+  # 
+  
+  pre = predict(svm_model,df)#,probability = TRUE)
   
   #sp1[is.infinite(sp1[,1]),1] = NA
   #sp1 = sp1[complete.cases(sp1),]
   
-  if(fscale){
-    
-    dff = divformcol(dff,1/mds)
-    dff = subformcol(dff,-mes)
-  }
+  # if(fscale){
+  #   
+  #   dff = divformcol(dff,1/mds)
+  #   dff = subformcol(dff,-mes)
+  # }
+  # 
   
   g1x = mean(dff[pre == 1,1])# + mes[1] 
   g1y = mean(dff[pre == 1,2])# + mes[2] 
@@ -144,16 +181,25 @@ geG <- function(inputA,v1,v2,fscale){
     
   }
   
-  if(PLOTS){
+  if(PLOTS & FALSE){
     
-    png(filename= paste0(plotpath,v1,"_",v2,"_SVM.png"))
-    plot(dff,col = pre,pch = 19 ,cex = 0.3)
+    png(filename= paste0(plotpath1,cnames[1],"_",cnames[2],"_SVM.png"))
+    plot(dff[,1:2],col = pre,pch = 19 ,cex = 0.3,xlab = cnames[1],ylab = cnames[2])
     points(c(g1x,g2x),c(g1y,g2y),col = 3, cex = 2,pch = 19)
+    dev.off()
+    
+    png(filename= paste0(plotpath1,cnames[3],"_",cnames[2],"_SVM.png"))
+    plot(dff[,3:2],col = pre,pch = 19 ,cex = 0.3,xlab = cnames[3],ylab = cnames[2])
     dev.off()
   }
   
-  pre
+  # plot(dff[,1:2],col = pre,pch = 19 ,cex = 0.3,xlab = cnames[1],ylab = cnames[2])
+  # points(c(g1x,g2x),c(g1y,g2y),col = 3, cex = 2,pch = 19)
+  # 
+  # plot(dff[,3:2],col = pre,pch = 19 ,cex = 0.3,xlab = cnames[3],ylab = cnames[2])
+  # 
   
+  pre
 }
 
 
@@ -1863,6 +1909,8 @@ Cd3Cd45Ratio = 0
 
   filedata = read.csv(wrkingFilepath,header = T)
   
+  
+  
   di = dim(filedata)
   
   #Extract Cartrige num  
@@ -1905,6 +1953,8 @@ Cd3Cd45Ratio = 0
   filedatals =  data.frame(apply(filedata[,ty[1:9]],2,log10))
   filedatals$FCS <- filedata$Peak9
   filedatals$sumCh =  apply(filedatals[,1:8],1,sum)
+  
+  
   
 #Sumch Detection--------------
   #sel_sumCh = RemoveLowSumCH()
