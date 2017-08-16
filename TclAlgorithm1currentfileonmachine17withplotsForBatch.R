@@ -226,9 +226,11 @@ SimpleRightCut <- function(maxrv,h,alfa){
 
 
 getCartrigeNameAdnDevice <-function(filePath){
-  
-  filename = strsplit(filePath,"/")[[1]]
-  filepart = strsplit(filePath,"_")[[1]]
+  #ChngefromOriginal
+  #filename = strsplit(filePath,"/")[[1]]
+  filename = basename(filePath)
+  #filepart = strsplit(filePath,"_")[[1]]
+  filepart = strsplit(filename,"_")[[1]]
   selDeviceS = grep("AX",filepart)
   DeviceNum <- as.numeric((strsplit(filepart[selDeviceS], "[^[:digit:]]")[[1]])[3])
   gc = grep("C",filepart)
@@ -564,7 +566,7 @@ maxiNu = function(x,y,PLOTS1,plotpath,filename,DEVOFF,minmax ,filter_length  ){
 }
 
 #main function
-runAlgo_shortData <- function(wrkingFilepath){
+runAlgo_shortData <- function(wrkingFilepath , datadir ){
   
   #ini Param-----------------------
   
@@ -583,6 +585,8 @@ runAlgo_shortData <- function(wrkingFilepath){
   #wrkingFilepath = fl#filepath1
   #Load file-----------------------
   
+  
+  
   filedata = read.csv(wrkingFilepath,header = T)
   
   di = dim(filedata)
@@ -595,8 +599,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     
     Cartnum = runInformation$Cartnum
     
-    
-    plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1608/",Cartnum,"/")
+    plotpath = paste0(datadir,"/",Cartnum,"/")
     
     if(PLOTS){  
       if(!dir.exists(plotpath)){
@@ -2314,40 +2317,67 @@ runAlgo_shortData <- function(wrkingFilepath){
   }
 }
 
-#runEnv ----- 
-#runAlgo_shortData(args[1])
-library(readr)
-filelist <- read.csv("C:/Temp/AronRuns/filelist.csv",header  = T )
+dirpath = choose.dir(caption = "Select floder wit the list of ..._events.csv files")
+timeStemp = gsub("-","_",gsub(":","_",Sys.time()))
+fileList = dir(dirpath,full.names = T)
+dataDirname  = paste0(dirpath,"\\data", timeStemp )
+dir.create(dataDirname)
+fileList = fileList[!(file.info(fileList))$isdir]
 
 br = NULL
 runfile = NULL
-
-
-
-i = 0 
-for(fl in filelist[1:7,1]){
+i = 0
+for(fl in fileList){
   i = i+1
-  print(i) 
-  d = dir(as.character(fl),full.names = T)
-  l = grep(".events.csv",d)
-  if(length(l) > 0 ){
-    print( basename( d[l] ) )
-    re = runAlgo_shortData( d[l] )
-    br = rbind(br,re[,1] )
-    runfile = c(runfile,basename(d[l]) )
-  }
+  #print(i)
+  #print(basename(fl))
+  #undebug(runAlgo_shortData)
+  re=runAlgo_shortData(fl,dataDirname)
+  br = rbind(br,re[,1])
+  runfile = c(runfile,basename(fl))
 }
 
 colnames(br) = re[,2]
-br = br1
-br <- data.frame(br)
-br = within( br,FILE.NAME <- (runfile) )
+br = data.frame(br,FILE.NAME = runfile)
+write.csv(br,paste0(dataDirname,"\\Results",timeStemp,".csv"))
 
-write.csv(br,"c:/Temp/AronRuns/Reuslts.csv")
+#runEnv ----- 
+#runAlgo_shortData(args[1])
+#library(readr)
+#filelist <- read.csv("C:/Temp/AronRuns/filelist.csv",header  = T )
 
-re = runAlgo_shortData(file.choose())
-
-View(br)
-
-#re = runAlgo_shortData(args[1])
-#write.csv(re,"C:/Accellix/CheckResult.csv")
+# br = NULL
+# runfile = NULL
+# 
+# 
+# 
+# re = runAlgo_shortData(file.choose())
+# 
+# 
+# i = 0 
+# for(fl in filelist[1:7,1]){
+#   i = i+1
+#   print(i) 
+#   d = dir(as.character(fl),full.names = T)
+#   l = grep(".events.csv",d)
+#   if(length(l) > 0 ){
+#     print( basename( d[l] ) )
+#     re = runAlgo_shortData( d[l] )
+#     br = rbind(br,re[,1] )
+#     runfile = c(runfile,basename(d[l]) )
+#   }
+# }
+# 
+# colnames(br) = re[,2]
+# br = br1
+# br <- data.frame(br)
+# br = within( br,FILE.NAME <- (runfile) )
+# 
+# write.csv(br,"c:/Temp/AronRuns/Reuslts.csv")
+# 
+# re = runAlgo_shortData(file.choose())
+# 
+# View(br)
+# 
+# #re = runAlgo_shortData(args[1])
+# #write.csv(re,"C:/Accellix/CheckResult.csv")

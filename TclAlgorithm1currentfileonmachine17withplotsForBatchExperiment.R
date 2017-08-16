@@ -30,9 +30,19 @@ LUDA = FALSE
 
 DEV.OFF <- function(){
   
-  if(FALSE){
+  if(TRUE){
     
-    def.off()
+    result = tryCatch({
+      dev.off()
+      
+    }, warning = function(w) {
+      
+    }, error = function(e) {
+      FALSE
+    }, finally = {
+      
+    })
+    
     
   }
   
@@ -226,9 +236,11 @@ SimpleRightCut <- function(maxrv,h,alfa){
 
 
 getCartrigeNameAdnDevice <-function(filePath){
-  
-  filename = strsplit(filePath,"/")[[1]]
-  filepart = strsplit(filePath,"_")[[1]]
+  #ChngefromOriginal
+  #filename = strsplit(filePath,"/")[[1]]
+  filename = basename(filePath)
+  #filepart = strsplit(filePath,"_")[[1]]
+  filepart = strsplit(filename,"_")[[1]]
   selDeviceS = grep("AX",filepart)
   DeviceNum <- as.numeric((strsplit(filepart[selDeviceS], "[^[:digit:]]")[[1]])[3])
   gc = grep("C",filepart)
@@ -564,10 +576,9 @@ maxiNu = function(x,y,PLOTS1,plotpath,filename,DEVOFF,minmax ,filter_length  ){
 }
 
 #main function
-runAlgo_shortData <- function(wrkingFilepath){
+runAlgo_shortData <- function(wrkingFilepath , datadir,UseCheck ){
   
   #ini Param-----------------------
-  
   CD45num = 0
   CD45Livenum = 0 
   CD45deadnum = 0
@@ -580,8 +591,12 @@ runAlgo_shortData <- function(wrkingFilepath){
   Cd3liveRatio = 0
   Cd3Cd45Ratio = 0  
   
-  #wrkingFilepath = fl#filepath1
+  #wrkingFilepath = fll#filepath1
   #Load file-----------------------
+  
+  #wrkingFilepath = fll
+  #datadir = dataDirname
+  #UseCheck = TRUE
   
   filedata = read.csv(wrkingFilepath,header = T)
   
@@ -595,8 +610,7 @@ runAlgo_shortData <- function(wrkingFilepath){
     
     Cartnum = runInformation$Cartnum
     
-    
-    plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1608/",Cartnum,"/")
+    plotpath = paste0(datadir,"/",Cartnum,"/")
     
     if(PLOTS){  
       if(!dir.exists(plotpath)){
@@ -618,6 +632,18 @@ runAlgo_shortData <- function(wrkingFilepath){
     
     filedatals =  data.frame(apply(filedata[,ty[1:9]],2,log10))
     filedatals$FCS <- filedata$Peak9
+  
+    #DD
+     
+    
+    for( i in 1:dim(filedatals)[2]){
+      filedatals[is.infinite(filedatals[,i]),i] = NA
+    }
+    
+    sel4 = complete.cases(filedatals)
+    filedatals = filedatals[sel4,]
+    
+
     filedatals$sumCh =  apply(filedatals[,1:8],1,sum)
     
     #Sumch Detection--------------------------------------------
@@ -684,95 +710,6 @@ runAlgo_shortData <- function(wrkingFilepath){
       
     }
     
-    #Old Code---------
-    if(FALSE)
-    {
-      
-      
-      #--
-      
-      #delete 210617DD
-      #le = dim(filedatal)[1]
-      #samp  = sample(1:le,min(le,2e4))
-      #with(filedatal[samp,],plot(sumCh,Area7 , pch = 19, cex= 0.2, 
-      #                           xlab = "sumCh",ylab = "Area7"))
-      
-      qi =  quantile(filedatal$sumCh,c(0.1,0.9))
-      x1 = median(filedatal$sumCh[filedatal$sumCh < qi[1]])
-      x2 = median(filedatal$sumCh[filedatal$sumCh > qi[2]])
-      y1 = median(filedatal$Area7[filedatal$sumCh < qi[1]])
-      y2 = median(filedatal$Area7[filedatal$sumCh > qi[2]])
-      x2 = 1/(4*(y2 - y1)/(x2 - x1))
-      x2 = min(10,x2)
-      vp = c(1,x2)/sqrt(1 + x2^2 )
-      vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
-      sumCh = cbind( filedatal$sumCh,filedatal$Area7 ) %*% (vp)
-      
-      #delete--
-      
-      #orignal-- 
-      # qi =  quantile(filedatal$sumCh,c(0.1,0.9))
-      # x1 = median(filedatal$sumCh[filedatal$sumCh < qi[1]])
-      # x2 = median(filedatal$sumCh[filedatal$sumCh > qi[2]])
-      # y1 = median(filedatal$FCS[filedatal$sumCh < qi[1]])
-      # y2 = median(filedatal$FCS[filedatal$sumCh > qi[2]])
-      # x2 = 1/(4*(y2 - y1)/(x2 - x1))
-      # x2 = min(10,x2)
-      # 
-      # #x2 = 10  # 3/20
-      # vp = c(1,x2)/sqrt(1 + x2^2 )
-      # vv  = c(1,-1/x2)/sqrt(1 +  ( 1/x2 )^2 )
-      # 
-      # sumCh = cbind( filedatal$sumCh,filedatal$FCS ) %*% (vp)
-      #--
-      #plot(filedatal$sumCh,filedatal$FCS,pch = 19, cex = 0.2)
-      
-      #Remove low sumCH events----
-      if(PLOTS){
-        
-        hsumch  =  hist(sumCh,200,,plot = F )
-        
-      }else{
-        
-        hsumch  =  hist(sumCh,200,plot = F )
-      }
-      
-      
-      fr = filter1(bf,5,hsumch$mids, hsumch$counts)
-      hsumch$mids = fr$x
-      hsumch$counts = fr$y
-      
-      fmax_hsumch = maxiNu(hsumch$mids,hsumch$counts,PLOTS,plotpath,"sumCh",FALSE,30,10)
-      
-      #Ver2.1
-      #min of at  least 15%
-      #sellowPre = fmax_hsumch$maxl$pre < 0.85
-      #fmax_hsumch$maxl  = fmax_hsumch$maxl[sellowPre,]
-      #fmax_hsumch$mins = fmax_hsumch$mins[sellowPre,]
-      #
-      #Change if 210617DD 
-      #if ( length(fmax_hsumch$maxl$x)  %in% c(2,3) ) {
-      if ( length(fmax_hsumch$maxl$x)  > 1 ) {
-        
-        #middle12 = hsumch$counts[fmax_hsumch$maxl[1]:fmax_hsumch$maxl[2]]
-        #minind =  which(min(middle12) == middle12 ) + fmax_hsumch$maxl[1] - 1
-        #bondaryv = hsumch$mids[minind[1]]
-        bondaryv = fmax_hsumch$mins$x[2] 
-        
-      }else{
-        
-        #Change 210617DD
-        #cutv = fmax_hsumch$maxl$y[1]* 0.05
-        #20.6 from + to -
-        #bondaryv  = hsumch$mids[fmax_hsumch$maxl$indx[1] + min(which(hsumch$counts[fmax_hsumch$maxl$indx[1]:length(hsumch$counts)] < cutv)) - 1]
-        #bondaryv  = hsumch$mids[fmax_hsumch$maxl$indx[1] - min(which(hsumch$counts[fmax_hsumch$maxl$indx[1]:length(hsumch$counts)] < cutv)) - 1]
-        bondaryv = hsumch$mids[SimpleLeftCut(fmax_hsumch$maxl$indx[1],hsumch,5e-2)]
-        #--
-        
-      }
-      
-      
-    }
     #--------------------
     
     if(PLOTS) {
@@ -863,14 +800,29 @@ runAlgo_shortData <- function(wrkingFilepath){
       sel45 = cl$cluster == 2
     }
     
-    filedatal_sel45 = filedatal[sel45,]
+    #DD
+    fsum <- function(x){sum(x,na.rm = T)}
     
+    if( UseCheck){
     
+      filedatals$sumCh =  apply(filedatals[,2:8],1,fsum )
+      ou = checkfs(plotpath,CartNum)
+      sel45 = ou == 2
+      filedatal = filedatals
+      filedatal_sel45 = filedatal[sel45,]
+      
+    }else{
+      
+    
+      filedatal_sel45 = filedatal[sel45,]
+    }
+    #DDf
+  
     h_Area6_sel45  = hist(filedatal_sel45$Area6,200,plot = F )
     fr = filter1(bf,5,h_Area6_sel45$mids, h_Area6_sel45$counts)
     h_Area6_sel45$mids = fr$x
     h_Area6_sel45$counts = fr$y
-    fmax_h_Area6_sel45 = maxiNu(h_Area6_sel45$mids,h_Area6_sel45$counts,PLOTS,plotpath,"Cd3 h_Area6",TRUE,30,10)
+    fmax_h_Area6_sel45 = maxiNu(h_Area6_sel45$mids,h_Area6_sel45$counts,PLOTS,plotpath,"Cd3 h_Area6",FALSE,30,10)
     if(length(fmax_h_Area6_sel45$maxl) > 0 ){
       
       if( length(fmax_h_Area6_sel45$maxl$x) > 1 ){
@@ -888,10 +840,10 @@ runAlgo_shortData <- function(wrkingFilepath){
       abline(v = bounadry_h_Area1_fcs , col = 2 ,lty = 2 ,lwd =2)
       DEV.OFF()
     }
+
     
     
     sel6 = filedatal$Area6  > bounadry_h_Area1_fcs
-    
     
     if(PLOTS) {
       
@@ -907,452 +859,10 @@ runAlgo_shortData <- function(wrkingFilepath){
       DEV.OFF()
     } 
     
-    
-    #Hirsh and Luda Code    
-    if(FALSE){
-      
-      #HirshAlgorithm 070517DD -----------------
-      
-      FCS_Area1 <- log10(with(filedatal,(10^FCS)*(10^Area1)))
-      h_FCS_Area1  = hist((FCS_Area1),100,plot = F)
-      fr = filter1(bf,2,h_FCS_Area1$mids, h_FCS_Area1$counts)
-      h_FCS_Area1$mids = fr$x
-      h_FCS_Area1$counts = fr$y
-      fmax_h1 = maxiNu(h_FCS_Area1$mids,h_FCS_Area1$counts,PLOTS,plotpath,"h1",FALSE,30,5)
-      cutmax = fmax_h1$maxl$x[length(fmax_h1$maxl$x)]
-      if(PLOTS){
-        xcut = cutmax - sd(FCS_Area1[FCS_Area1 > cutmax])
-        abline(v = xcut)
-        DEV.OFF()
-      }
-      
-      
-      sel45Hirsh = FCS_Area1 > xcut
-      h6 = with(filedatal[sel45Hirsh,],hist(Area6,100,plot = F))
-      fr = filter1(bf,5,h6$mids, h6$counts)
-      h6$mids = fr$x
-      h6$counts = fr$y
-      fmax_h6 = maxiNu(h6$mids,h6$counts,PLOTS,plotpath,"h6",FALSE,30,10)
-      
-      if(length(fmax_h6$maxl) > 0 ){
-        
-        if( length(fmax_h6$maxl$x) > 1 ){
-          
-          cut6 = fmax_h6$min$x[length(fmax_h6$min$x) - 1]
-          
-        }else{
-          
-          cut6 = h6$mids[SimpleLeftCut(fmax_h6$maxl$indx[1],h6,0.1)]
-          
-          
-        }
-      }else{
-        
-        cut6 = 0
-        
-      }
-      
-      if(PLOTS){
-        
-        abline(v = cut6)
-        
-      }
-      
-      sel6 = with(filedatal,Area6 > cut6)
-      h1 = with(filedatal[sel45Hirsh & sel6, ], hist(Area1,100,plot = F) )
-      fmax_h1 = maxiNu(h1$mids,h1$counts,PLOTS,plotpath,"h1",FALSE,30,5)
-      
-      if(length(fmax_h1$maxl) > 0 ){
-        cut1 = h1$mids[SimpleLeftCut(fmax_h1$maxl$indx[1],h1,0.1)]
-        with(filedatal[sel45Hirsh,],plot(Area6,Area1,pch  =19,cex =0.2))
-      }else{
-        
-        cut1  = 0
-        
-      }
-      
-      
-      
-      #results
-      
-      
-      #cd45pre = sum(sel45Hirsh)/dim(filedatal)[1]
-      
-      se  = seq(2,-2,-0.01)
-      bu = NULL
-      for(s in se){
-        sel45Hirsh = FCS_Area1 > xcut+ s
-        #with(filedatal[sel45Hirsh,],points(Area6,Area1,pch  =19,cex = 0.1, col = 2, ylim  = c(1,4) ))
-        A = sum(filedatal[sel45Hirsh,"Area1"] < cut1 )
-        B = sum( filedatal[sel45Hirsh,"Area1"] > cut1 )
-        bu = c( bu , A/(A+B) ) 
-      }
-      
-      
-      xout  = (xcut+se)[min(which(0.02*(max(bu,na.rm = T) - min(bu,na.rm = T)) + min(bu,na.rm = T) <= bu))]
-      
-      if(PLOTS){
-        png(filename= paste0(plotpath,"Check FCS_Area1",".png"))
-        plot(xcut+se,bu)
-        abline(v  =  xcut)
-        DEV.OFF()
-      }
-      
-      
-      sel45Hirsh = FCS_Area1 > xout
-      cd3_45pre = sum(filedatal[sel45Hirsh,]$Area6 >  cut6)/dim(filedatal[sel45Hirsh,])[1]
-      
-      if(PLOTS){
-        png(filename= paste0(plotpath,"Over shoot cut example ",".png"))
-        with(filedatal[FCS_Area1 > (xout-0.5),],plot(Area6,Area1,pch  =19,cex =0.2))
-        with(filedatal[sel45Hirsh,],points(Area6,Area1,pch  =19,cex =0.2,col = 2))
-        abline(v = cut6)
-        abline(h = cut1)
-        DEV.OFF()
-      }
-      
-      if(PLOTS) {
-        
-        png(filename= paste0(plotpath,"FCS vs Area1 Hirsh Algorithm ",".png"))
-        le = dim(filedatal)[1]
-        samp  = sample(1:le,min(le,2e4))
-        with(filedatal[samp,],plot(Area1,10^FCS , pch = 19, cex= 0.2, 
-                                   xlab = "Area1",ylab = "FCS",
-                                   col = colbr[1+ sel45Hirsh[samp]],
-                                   #xlim = c(0,20),ylim = c(1,5),
-                                   main = paste0("FCS vs Area1 Angle = ", slop ,"  ", CarName)))
-        #abline(c(0,3/20))
-        DEV.OFF()
-      }
-      
-      sel6Hirsh = filedatal$Area6 > cut6
-      
-      
-      if(PLOTS) {
-        
-        png(filename= paste0(plotpath,"CD3 selection ",".png"))
-        le = dim(filedatal)[1]
-        samp  = sample(1:le,min(le,2e4))
-        with(filedatal[sel45Hirsh,],plot(Area6,Area1 , pch = 19, cex= 0.2, 
-                                         xlab = "Area6",ylab = "Area1",
-                                         col = colbr[1+ sel6Hirsh[sel45Hirsh]],
-                                         #xlim = c(0,20),ylim = c(1,5),
-                                         main = paste0("CD3 selection")))
-        #abline(c(0,3/20))
-        DEV.OFF()
-      }
-      
-      
-      #Luda Algorithm --------------------------------
-      
-      df = with(filedatal,data.frame(x = Area1,y = 10^FCS ))
-      re = range(df$x)
-      seq1 = seq(re[1],re[2],0.01)
-      df$interval <- findInterval(df$x,seq1)  
-      countinterval = aggregate(df$y,list(df$interval),length)
-      inmedain = aggregate(df$y,list(df$interval),median)
-      dfo = data.frame(countinterval[,1:2],inmedain[,2],seq1[countinterval[,1]])
-      dfo = dfo[dfo[,2] > 30,]
-      
-      q70 = quantile(dfo[,4],0.70)
-      sel75 = dfo[,4] > q70
-      x = dfo[sel75,4]+0.05
-      y = dfo[sel75,3]
-      m1 = lm(y~x)
-      #q20 = quantile(dfo[,4],0.20)
-      #sel20 = dfo[,4] < q20
-      #x = dfo[sel25,4]+0.05
-      #y = dfo[sel25,3]
-      #m2 = lm(y~x)
-      
-      #if( m2$coefficients[1]  < -500 | m2$coefficients[1]  > 1000 ){
-      
-      q20 = quantile(dfo[,4],0.20)
-      m2$coefficients[1] = min(median(y),500)
-      m2$coefficients[2] = 0
-      #}
-      
-      if(PLOTS) {
-        png(filename= paste0(plotpath,"Transition location.png")) 
-        plot(dfo[,4]+0.05,dfo[,3],pch=2 )
-        abline(m1)
-        abline(m2)
-        
-      }
-      
-      xre = (m2$coefficients[1] - m1$coefficients[1] ) / (m1$coefficients[2] - m2$coefficients[2])
-      
-      if(PLOTS) {
-        
-        abline(v = xre,col = 2,lwd = 2, lty = 2) 
-        DEV.OFF()
-      }  
-      
-      if( ( xre < re[1] ) | ( xre > re[2] ) )  {
-        
-        print( "xre Out of range")
-        
-      }
-      
-      #Direction
-      slop =  -10^7/(2*m1$coefficients[2])
-      b  =   -xre * slop 
-      
-      #xx = seq(1,3,0.01)
-      #points(xx,xx*slop  + b,"l",lwd = 2)
-      sel45Luda  = ( 10^filedatal$FCS >=  ( slop*filedatal$Area1 + b ) )  
-      
-      h6 = with(filedatal[sel45Luda,],hist(Area6,100,plot = F))
-      fr = filter1(bf,5,h6$mids, h6$counts)
-      h6$mids = fr$x
-      h6$counts = fr$y
-      fmax_h6 = maxiNu(h6$mids,h6$counts,PLOTS,plotpath,"h6",FALSE,30,5)
-      
-      if(length(fmax_h6$mins) > 0 ){
-        
-        if(length(fmax_h6$mins$x) > 2 ){
-          cut6 = fmax_h6$mins$x[length(fmax_h6$mins$x)-1]
-        }else{
-          
-          cut6 = quantile(filedatal[sel45Luda,]$Area6,2e-2)
-        }
-        
-        sel6Luda = ( filedatal$Area6 > cut6 )
-        cut6_1 = with(filedatal[sel6Luda,],quantile(Area1,0.05))
-      }
-      
-      if(PLOTS) {
-        
-        abline(v = cut6)
-        DEV.OFF()
-      }  
-      
-      seq1 = seq(-1.0,1.0,0.1)
-      bu = NULL
-      xu = NULL
-      for(s in seq1 ){
-        
-        #Direction
-        slop =  -10^7/(2*m1$coefficients[2])
-        b  =   -(xre+s) * slop 
-        
-        #xx = seq(1,3,0.01)
-        #points(xx,xx*slop  + b,"l",lwd = 2)
-        sel45loop  = ( 10^filedatal$FCS >=   ( slop*filedatal$Area1 + b ) )
-        bu = c(bu,with(filedatal[!sel6Luda & sel45loop,],length(Area1[Area1 < cut6_1])/length(Area1[Area1 > cut6_1])))
-        xu = c(xu ,xre+s)
-      }
-      
-      
-      if(sum( bu > 0.05 ) > 0 ){
-        xre = xu[min(which(bu < ( min(bu) + 0.05 *(max(bu) - min(bu)))))]
-      }
-      slop =  -10^7/(2*m1$coefficients[2])
-      b  =   - xre * slop 
-      #sel45  = ( 10^filedatal$FCS >=   ( slop*filedatal$Area1 + b ) )
-      
-      if(PLOTS) {
-        
-        png(filename= paste0(plotpath,"Transition location.png")) 
-        plot(dfo[,4]+0.05,dfo[,3],pch=2 )
-        abline(m1)
-        abline(m2)
-        abline(v = xre,col = 2, lwd = 2 ,lty = 2 )
-        DEV.OFF()
-        
-      }
-      
-      sel45Luda  = ( 10^filedatal$FCS >=   ( slop*filedatal$Area1 + b ) )
-      
-      if(PLOTS) {
-        
-        png(filename= paste0(plotpath,"Area1 vs Area6",".png"))
-        
-        slop =  -10^7/(2*m1$coefficients[2])
-        b  =   -( xre - 0.5) * slop 
-        sel45s  = ( 10^filedatal$FCS >=   ( slop*filedatal$Area1 + b ) )
-        
-        with(filedatal[sel45s,],plot(Area6,Area1,pch =19 ,col = 2,cex =0.2,xlim = c(0,3),ylim = c(1,4)))
-        abline(v = cut6,col = 2,lwd =2 ,lty  = 2 )
-        abline(h = cut6_1,col = 2,lwd =2 ,lty  = 2 )
-        
-        
-        with(filedatal[sel45Luda,],points(Area6,Area1,pch =19 ,col = 1 ,cex =0.3,xlim = c(0,3),ylim = c(1,4)))
-        abline(v = cut6,col = 2,lwd =2 ,lty  = 2 )
-        abline(h = cut6_1,col = 1,lwd =2 ,lty  = 2 )
-        
-        DEV.OFF()
-      }
-      
-      
-      if(PLOTS) {
-        
-        png(filename= paste0(plotpath,"FCS vs Area1",".png"))
-        le = dim(filedatal)[1]
-        samp  = sample(1:le,min(le,2e4))
-        with(filedatal[samp,],plot(Area1,10^FCS , pch = 19, cex= 0.2, 
-                                   xlab = "Area1",ylab = "FCS",
-                                   col = colbr[1+ sel45Luda[samp]],
-                                   #xlim = c(0,20),ylim = c(1,5),
-                                   main = paste0("FCS vs Area1 Angle = ", slop ,"  ", CarName)))
-        #abline(c(0,3/20))
-        DEV.OFF()
-      }
-      
-      #------------------------------------
-      
-      
-      if(FALSE){    
-        if( LUDA ){
-          sel45 = sel45Luda
-          sel6 =  sel6Luda
-        }else{
-          sel45 = sel45Hirsh
-          sel6 =  sel6Hirsh
-        }
-        
-      }
-    }  
-    
     filedatal45pl = filedatal[sel45,]
     selCD3 =  sel6 & sel45
     
-    #--------------------
-    #Old CODE 280617
-    if(FALSE){
-      #Change FCS to Area7 210617 delete in the end 
-      
-      if(PLOTS) {
-        png(filename= paste0(plotpath,"sumCh_FCS",".png"))
-        le = dim(filedatal)[1]
-        samp  = sample(1:le,min(le,2e4))
-        with(filedatal[samp,],plot(sumCh,Area7 , pch = 19, cex= 0.2, 
-                                   xlab = "sumCh",ylab = "Area7",
-                                   col = colbr[1+ sel_sumCh[samp]],
-                                   xlim = c(0,20),ylim = c(1,5),
-                                   main = paste0("Area7 vs Area1 Angle = ", round(x2,2) ,"  ", CarName)))
-        #abline(c(0,3/20))
-        DEV.OFF()
-      }
-      
-      
-      #Original
-      # if(PLOTS) {
-      #   png(filename= paste0(plotpath,"sumCh_FCS",".png"))
-      #   le = dim(filedatal)[1]
-      #   samp  = sample(1:le,min(le,2e4))
-      #   with(filedatal[samp,],plot(sumCh,FCS , pch = 19, cex= 0.2, 
-      #                            xlab = "sumCh",ylab = "FCS",
-      #                            col = colbr[1+ sel_sumCh[samp]],
-      #                            xlim = c(0,20),ylim = c(1,5),
-      #                            main = paste0("FCS vs Area1 Angle = ", round(x2,2) ,"  ", CarName)))
-      #   #abline(c(0,3/20))
-      #   DEV.OFF()
-      # }
-      # 
-      # 
-      
-      filedatal = filedatal[sel_sumCh,]
-    }
-    
-    
     #Old CODE 280617---------------------
-    if(FALSE){
-      #detect 45 High Area1 -----------------------
-      if( PLOTS) {
-        h_Area1 = with(filedatal,hist(Area1,200,plot = F))
-      }else{
-        h_Area1 = with(filedatal,hist(Area1,200,plot = F))
-      }
-      
-      
-      fr = filter1(bf,5,h_Area1$mids, h_Area1$counts)
-      h_Area1$mids = fr$x
-      h_Area1$counts = fr$y
-      #Ver2.1
-      #h_Area1_max  = findmax1(h_Area1$mids, h_Area1$counts,20,5,5,20,main = CarName)
-      
-      #change new max 210617DD
-      #mindiff = min(max(h_Area1$counts)/10,100)
-      #h_Area1_max = maxdetcetion(h_Area1$counts,0.85,2*mindiff,1.2,mindiff,PLOTS,h_Area1$mids,main = CarName)
-      h_Area1_max = maxiNu(h_Area1$mids,h_Area1$counts,PLOTS,plotpath,"h_Area1",FALSE,30,10)
-      
-      
-      le = length(h_Area1_max$maxl$x)
-      
-      if( le == 2 ) {
-        
-        ind = h_Area1_max$maxl$indx[1]:h_Area1_max$maxl$indx[2]
-        indmin = which(min(h_Area1$counts[ind]) == h_Area1$counts[ind]) + h_Area1_max$maxl$indx[1]
-        cutLowArea1 = h_Area1$mids[indmin]
-        
-        se = seq(cutLowArea1-0.2,cutLowArea1+0.2,0.01)
-        bu = NULL
-        for(l in se){  
-          selArea1 = filedatal$Area1 > l
-          filedatal45pl = filedatal[selArea1,]
-          bu  = c(bu,dim(filedatal45pl)[1])
-        }
-        
-        diffbu = diff(bu)
-        
-        if(PLOTS) {
-          
-          plot(se[2:length(se)],diffbu,'b',pch = 19,cex = 0.5)
-        }
-        
-        
-        
-        #diffbu = average2(diffbu)
-        diffbu = filter1(bf,3,1:length(diffbu), diffbu)$y
-        
-        if(PLOTS) {
-          points(se[3:(length(se)-2)],diffbu,'l',pch = 19,col = 2)
-        }
-        
-        maxlocation = which(max(diffbu) == diffbu)
-        
-        if(PLOTS) {
-          points(se[min(maxlocation+2,length(se))],diffbu[min(maxlocation,length(diffbu))],col =3, lwd = 2,cex =3 )
-        }
-        
-        cutLowArea1 =  se[ min(maxlocation+2,length(se)) ]
-        
-      }else if ( le == 1 ){
-        
-        indmin = which.max(cumsum(h_Area1$counts)/sum(h_Area1$counts) > 0.02)
-        cutLowArea1 = h_Area1$mids[ indmin ]
-        
-      }
-      
-      
-      
-      
-      #Debug 280617DD
-      
-      #selArea1 = filedatal$Area1 > cutLowArea1
-      selArea1 = filedatal$Area1 > 2.5
-      
-      #
-      
-      if(PLOTS) {
-        
-        abline(v = cutLowArea1,col = 2 ,lty = 2, lwd =2)
-        DEV.OFF()
-      }
-      
-      filedatal45pl = filedatal[selArea1,]
-      
-      if(PLOTS) {
-        
-        png(filename= paste0(plotpath,"Area1",".png"))
-        le = dim(filedatal)[1]
-        samp  = sample(1:le,min(le,2e4))
-        with(filedatal[samp,],plot(Area1,FCS,pch =19 ,cex = 0.2 ,col = colbr[1 + selArea1[samp]] ))
-        DEV.OFF()
-      }
-      
-    }
     
     dimfiledatal45pl  = dim(filedatal45pl)[1]
     
@@ -1361,12 +871,28 @@ runAlgo_shortData <- function(wrkingFilepath){
       return(errorH(UseValidationMode,paste0("CD45 countes =", dimfiledatal45pl),plotpath))
     }    
     
+    
+    
+    
     Area1DArea2b = 0
     Area1DArea2  = round(median(filedatal[sel45,]$Area1)/median(filedatal[sel45,]$Area2),2)
-    if(Area1DArea2 < 1.22 ) {
-      Area1DArea2b = 1
-      #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", Area1DArea2),plotpath))
-    }
+    
+    #DD
+    Area1DArea2b = tryCatch( { ifelse(Area1DArea2 < 1.22,1,0)
+    }, warning = function(w) {
+      0#warning-handler-code
+    }, error = function(e) {
+      0#error-handler-code
+    }, finally = {
+      0#cleanup-code
+    })
+    
+    # if(Area1DArea2 < 1.22 ) {
+    #   Area1DArea2b = 1
+    #   #return(errorH(UseValidationMode,paste0("CD45Area1/Area2 =", Area1DArea2),plotpath))
+    # }
+    # 
+    
     
     Area1DArea2 = c(Area1DArea2,Area1DArea2b)
     
@@ -2314,40 +1840,86 @@ runAlgo_shortData <- function(wrkingFilepath){
   }
 }
 
-#runEnv ----- 
-#runAlgo_shortData(args[1])
-library(readr)
-filelist <- read.csv("C:/Temp/AronRuns/filelist.csv",header  = T )
+dirpath = choose.dir(caption = "Select floder wit the list of ..._events.csv files")
+timeStemp = gsub("-","_",gsub(":","_",Sys.time()))
+fileList = dir(dirpath,full.names = T)
+dataDirname  = paste0(dirpath,"\\data", timeStemp )
+dir.create(dataDirname)
+fileList = fileList[!(file.info(fileList))$isdir]
+
+fll = fileList[2]
 
 br = NULL
 runfile = NULL
-
-
-
-i = 0 
-for(fl in filelist[1:7,1]){
+i = 0
+for(fll in fileList){
   i = i+1
-  print(i) 
-  d = dir(as.character(fl),full.names = T)
-  l = grep(".events.csv",d)
-  if(length(l) > 0 ){
-    print( basename( d[l] ) )
-    re = runAlgo_shortData( d[l] )
-    br = rbind(br,re[,1] )
-    runfile = c(runfile,basename(d[l]) )
+  #print(i)
+  #print(basename(fl))
+  #undebug(runAlgo_shortData)
+  #re=runAlgo_shortData(fll,dataDirname,TRUE)
+  result = TRUE
+  result = tryCatch({
+    re=runAlgo_shortData(fll,dataDirname,TRUE)
+    TRUE
+  }, warning = function(w) {
+    TRUE
+  }, error = function(e) {
+    print("Error")
+    FALSE
+    
+  }, finally = {
+    print("final")
+  })
+  
+  if( result ){
+    
+    br = rbind(br,re[,1])
+    runfile = c(runfile,basename(fll))
   }
 }
 
 colnames(br) = re[,2]
-br = br1
-br <- data.frame(br)
-br = within( br,FILE.NAME <- (runfile) )
+br = data.frame(br,FILE.NAME = runfile)
+write.csv(br,paste0(dataDirname,"\\Results",timeStemp,".csv"))
 
-write.csv(br,"c:/Temp/AronRuns/Reuslts.csv")
+#runEnv ----- 
+#runAlgo_shortData(args[1])
+#library(readr)
+#filelist <- read.csv("C:/Temp/AronRuns/filelist.csv",header  = T )
 
-re = runAlgo_shortData(file.choose())
-
-View(br)
-
-#re = runAlgo_shortData(args[1])
-#write.csv(re,"C:/Accellix/CheckResult.csv")
+# br = NULL
+# runfile = NULL
+# 
+# 
+# 
+# re = runAlgo_shortData(file.choose())
+# 
+# 
+# i = 0 
+# for(fl in filelist[1:7,1]){
+#   i = i+1
+#   print(i) 
+#   d = dir(as.character(fl),full.names = T)
+#   l = grep(".events.csv",d)
+#   if(length(l) > 0 ){
+#     print( basename( d[l] ) )
+#     re = runAlgo_shortData( d[l] )
+#     br = rbind(br,re[,1] )
+#     runfile = c(runfile,basename(d[l]) )
+#   }
+# }
+# 
+# colnames(br) = re[,2]
+# br = br1
+# br <- data.frame(br)
+# br = within( br,FILE.NAME <- (runfile) )
+# 
+# write.csv(br,"c:/Temp/AronRuns/Reuslts.csv")
+# 
+# re = runAlgo_shortData(file.choose())
+# 
+# View(br)
+# 
+# #re = runAlgo_shortData(args[1])
+# #write.csv(re,"C:/Accellix/CheckResult.csv")

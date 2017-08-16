@@ -79,7 +79,10 @@ rdirname = dir("L:/Scientific/Raw Data/Reader_Data/TCL Validation/accellix17/",f
 f <- function(x){getCartrigeNameAdnDevice(x)$Cartnum}
 filePath =file.choose()
 fcsf = read.csv(filePath,header = T)
-fcsfcn = sapply(basename(as.character(fcsf$FILE.NAME)),f)
+colnames(fcsf)
+#fcsfcn = sapply(basename(as.character(fcsf$FILE.NAME)),f)
+fcsfcn =  sapply(as.character(fcsf$FILE.NAME),f)
+
 names(fcsfcn) = NULL
 ludaResult = data.frame(fileName = fcsf$FILE.NAME, Type = fcsf$Type, FILE.NAME = fcsfcn,facsbu45 = fcsf$X.CD45.TOT)
 
@@ -90,14 +93,16 @@ list_cn = sapply(basename(rdirname),f)
 names(list_cn) = NULL
 rdirname = rdirname[ list_cn %in%  ludaResult$FILE.NAME ]
 
+fl = rdirname[grep("3300",basename(rdirname))]
+
 fl = rdirname[1]
 ou = checkf(rdirname[34])
 sel45 = ou == 2
 sum(sel45)
 
-bu45 = NULL
-bufl = NULL
-for(fl in rdirname[1:20] ){
+#bu45 = NULL
+#bufl = NULL
+for(fl in rdirname[101:112] ){
   
    ou = checkf(fl)
    sel45 = ou == 2
@@ -109,20 +114,33 @@ for(fl in rdirname[1:20] ){
 
 keepBu45  = bu45
 keepbufl  = bufl
-le = length(bu45)
-bu45 = bu45[-le]
-bufl = bufl[-le]
+#le = length(bu45)
+#bu45 = bu45[-le]
+#bufl = bufl[-le]
 cn = sapply(basename(bufl),f)
 names(cn) = NULL
 cn
-ludaResult$FILE.NAME[1:10]
+
+
+
 
 
 df = data.frame(FILE.NAME = cn ,auto   =  bu45 )
+#cn = sapply(basename(keepbufl),f)
+#names(cn) = NULL
+#df = data.frame(FILE.NAME = cn ,auto   =  keepBu45 )
 
 
 
 me = merge(ludaResult,df)
+me = data.frame(me)
+
+resultWitFilter.path = file.choose()
+resultWitFilter.data = read.csv(resultWitFilter.path,header = T ,stringsAsFactors = T)
+
+View(resultWitFilter.data)
+
+write.csv(me,"C:/Project/LeukoDx/LudaFacsValidation/Debug1408/ResultwithShortEvents.csv")
 
 View(me)
 
@@ -179,7 +197,7 @@ checkf <- function(wrkingFilepath){
   
   Cartnum = runInformation$Cartnum
   
-  plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1408/",Cartnum,"/")
+  plotpath = paste0("C:/Project/LeukoDx/LudaFacsValidation/Debug1608/",Cartnum,"/")
   
   if( PLOTS ){  
     if(!dir.exists(plotpath)){
@@ -245,7 +263,7 @@ checkf <- function(wrkingFilepath){
     
     png(filename= paste0(plotpath,CNAME_in[1],"_",CNAME_in[2],"_SVM.png"))
     plot(filedatals[,c(CNAME_in[1],CNAME_in[2])],col = out1,pch = 19 ,cex = 0.2,xlab = CNAME_in[1],ylab = CNAME_in[2])
-    points(c(g1x,g2x),c(g1y,g2y),col = 3, cex = 2,pch = 19)
+    #points(c(g1x,g2x),c(g1y,g2y),col = 3, cex = 2,pch = 19)
     dev.off()
     
     png(filename= paste0(plotpath,CNAME_in[3],"_",CNAME_in[2],"_SVM.png"))
@@ -262,6 +280,47 @@ checkf <- function(wrkingFilepath){
   out1
   
 }
+
+
+checkfs <- function(plotpath, CartNum ){
+  
+  if( dim(filedatals)[1] > 100 ){
+    
+    #out = geG(filedatals,c("Area1", "Area7" ,"sumCh"),T,plotpath)
+    selv = which(filedatals$sumCh > 1 & filedatals$Area1 > 1)
+    
+    filedatals1 = filedatals[selv,]
+    CNAME_in = c("Area1","FCS","sumCh", "Area7" )
+    CNAME_in = c("Area1","FCS","sumCh", "Area7" )
+    out = geG(filedatals1,CNAME_in,T,plotpath,c(1,1,1,1))
+    out1  = rep(1,dim(filedatals)[1])
+    
+    for(i in 1:length(selv)){
+      
+      out1[selv[i]]  <- out[i]
+    }
+    
+    png(filename= paste0(plotpath,CNAME_in[1],"_",CNAME_in[2],"_SVM.png"))
+    plot(filedatals[,c(CNAME_in[1],CNAME_in[2])],col = out1,pch = 19 ,cex = 0.2,xlab = CNAME_in[1],ylab = CNAME_in[2])
+    #points(c(g1x,g2x),c(g1y,g2y),col = 3, cex = 2,pch = 19)
+    dev.off()
+    
+    png(filename= paste0(plotpath,CNAME_in[3],"_",CNAME_in[2],"_SVM.png"))
+    plot(filedatals[,c( CNAME_in[3] , CNAME_in[2] )],col = out1,pch = 19 ,cex = 0.2,xlab = CNAME_in[3],ylab = CNAME_in[2])
+    plot(filedatals[,c( CNAME_in[3] , CNAME_in[2] )],col = out1,pch = 19 ,cex = 0.2,xlab = CNAME_in[3],ylab = CNAME_in[2])
+    dev.off()
+    
+  }else{
+    
+    print(paste0("No points !!!",dim(filedatals)[1]))
+    
+  }
+  
+  out1
+  
+}
+
+
 
 #filedatals$Area11 <- filedatals$Peak9
 #Working 140817
