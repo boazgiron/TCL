@@ -632,9 +632,50 @@ runAlgo_shortData <- function(wrkingFilepath , datadir,UseCheck ){
     
     filedatals =  data.frame(apply(filedata[,ty[1:9]],2,log10))
     filedatals$FCS <- filedata$Peak9
-  
+    
+    ##DD210817xxx
+    
+    
+    
+    #hist(filedatals$Area1)
+    #hist(filedatals$Peak9)
+    
+    createdfz <-function(h){
+      zr =NULL
+      for(i in 1:length(h$x)){
+        for(j in 1:length(h$y)){
+          zr = rbind(zr , c(i,j,h$x[i],h$y[j],h$z[i,j]))    
+        }
+      }
+      
+      zr
+    }
+    
+    s = sample(nrow(filedatals),8e4)
+
+    i = 0 
+    while( cont & maxif){
+   
+      h2 <- with(filedatals[s,],kde2d(Area1, FCS, n = 50,lims = c(0, max(Area1) ,c(1e2,quantile(FCS,0.99)))))
+      h2$z = 27*(h2$z- min(h2$z))/diff(range(h2$z))
+    
+      h2$z[h2$z < 1] = 0
+      h2$z[h2$z > 1] = 1
+      h2$z = GetLabel(h2$z)
+    
+      dfh = as.data.frame(createdfz(h2))
+      colnames(dfh) <- c("indx","indy","x","y","z")
+      
+      ag = aggregate(dfh$x,list(dfh$z),length)
+      cout  = length(unique(as.vector(h2$z))) > 2
+      i= i + 1
+    }
+    
+    image(h2,breaks = 1:21,col = rainbow(20) )
+    points(ag[2:3,"x"],ag[2:3,"y"])
+    
+    
     #DD
-     
     
     for( i in 1:dim(filedatals)[2]){
       filedatals[is.infinite(filedatals[,i]),i] = NA
@@ -728,14 +769,14 @@ runAlgo_shortData <- function(wrkingFilepath , datadir,UseCheck ){
     
     if(PLOTS) {
       
-      png(filename= paste0(plotpath,"SumCh_Area7 boundary bondaryv1",".png"))
+      png(filename= paste0(plotpath,"Area1_Area7 boundary bondaryv1",".png"))
       le = dim(filedatals)[1]
       samp  = sample(1:le,min(le,2e4))
-      with(filedatals[samp,],plot(sumCh,Area7 , pch = 19, cex= 0.2, 
+      with(filedatals[samp,],plot(Area1,Area7 , pch = 19, cex= 0.2, 
                                   xlab = "sum FL",ylab = "Area7",
                                   col = colbr[1+ sel_sumCh[samp]],
                                   ylim = c(0,5),
-                                  main = paste0("SumCh_Area7 boundary bondaryv1 ", CarName)))
+                                  main = paste0("Area1_Area7 boundary bondaryv1 ", CarName)))
       DEV.OFF()
     }
     
@@ -805,7 +846,7 @@ runAlgo_shortData <- function(wrkingFilepath , datadir,UseCheck ){
     
     if( UseCheck){
     
-      filedatals$sumCh =  apply(filedatals[,2:8],1,fsum )
+      filedatals$sumCh =  apply(filedatals[,1:8],1,fsum )
       ou = checkfs(plotpath,CartNum)
       sel45 = ou == 2
       filedatal = filedatals
@@ -1847,41 +1888,51 @@ dataDirname  = paste0(dirpath,"\\data", timeStemp )
 dir.create(dataDirname)
 fileList = fileList[!(file.info(fileList))$isdir]
 
-fll = fileList[2]
+
 
 br = NULL
 runfile = NULL
 i = 0
-for(fll in fileList){
-  i = i+1
-  #print(i)
-  #print(basename(fl))
-  #undebug(runAlgo_shortData)
-  #re=runAlgo_shortData(fll,dataDirname,TRUE)
-  result = TRUE
-  result = tryCatch({
-    re=runAlgo_shortData(fll,dataDirname,TRUE)
-    TRUE
-  }, warning = function(w) {
-    TRUE
-  }, error = function(e) {
-    print("Error")
-    FALSE
-    
-  }, finally = {
-    print("final")
-  })
+for(fll in fileList[1:1]){
   
-  if( result ){
-    
+    re=runAlgo_shortData(fll,dataDirname,TRUE)
     br = rbind(br,re[,1])
     runfile = c(runfile,basename(fll))
-  }
+  
 }
+
 
 colnames(br) = re[,2]
 br = data.frame(br,FILE.NAME = runfile)
 write.csv(br,paste0(dataDirname,"\\Results",timeStemp,".csv"))
+
+
+# for(fll in fileList){
+#   i = i+1
+#   #print(i)
+#   #print(basename(fl))
+#   #undebug(runAlgo_shortData)
+#   #re=runAlgo_shortData(fll,dataDirname,TRUE)
+#   result = TRUE
+#   result = tryCatch({
+#     re=runAlgo_shortData(fll,dataDirname,TRUE)
+#     TRUE
+#   }, warning = function(w) {
+#     TRUE
+#   }, error = function(e) {
+#     print("Error")
+#     FALSE
+#     
+#   }, finally = {
+#     print("final")
+#   })
+#   
+#   if( result ){
+#     
+#     br = rbind(br,re[,1])
+#     runfile = c(runfile,basename(fll))
+#   }
+# }
 
 #runEnv ----- 
 #runAlgo_shortData(args[1])
